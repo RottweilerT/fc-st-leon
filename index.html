@@ -90,6 +90,11 @@ input[type=text],input[type=date],input[type=time],input[type=number],select{wid
 .mini.warn{background:var(--bad-bg);border-color:var(--bad);color:var(--bad)}
 
 /* roster list */
+.posgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:2px 0 12px}
+@media (max-width:420px){.posgrid{grid-template-columns:1fr}}
+label.sub{font-weight:500;font-size:12px}
+.av.numb{background:var(--pitch);color:var(--pitch-ink)}
+.plist .nm span.pos{display:block;font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .plist{list-style:none;margin:0 0 14px;padding:0;border:1px solid var(--line);border-radius:12px;background:var(--surface);overflow:hidden}
 .plist li{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--line)}
 .plist li:last-child{border-bottom:0}
@@ -257,6 +262,7 @@ ol.steps{margin:0 0 14px;padding-left:20px} ol.steps li{margin-bottom:4px}
       <h2 id="me-title">Je m'inscris</h2>
       <div id="me-done" hidden>
         <p>Tu es inscrit comme <b id="me-name"></b>.</p>
+        <p class="num" id="me-prof"></p>
         <p class="hint num" id="me-att"></p>
         <div class="btnrow"><button class="mini" id="me-edit">Modifier</button><button class="mini" id="me-forget">Ce n'est pas moi</button><button class="mini" id="me-del">Me désinscrire</button></div>
       </div>
@@ -264,6 +270,16 @@ ol.steps{margin:0 0 14px;padding-left:20px} ol.steps li{margin-bottom:4px}
         <div class="row">
           <div><label for="me-first">Prénom</label><input type="text" id="me-first" autocomplete="given-name" required></div>
           <div><label for="me-last">Nom</label><input type="text" id="me-last" autocomplete="family-name" required></div>
+        </div>
+        <div class="row">
+          <div><label for="me-num">N° de maillot</label><input type="number" id="me-num" min="1" max="99" inputmode="numeric" placeholder="ex. 10"></div>
+          <div></div>
+        </div>
+        <label>Postes préférés en match, par ordre de préférence</label>
+        <div class="posgrid">
+          <div><label for="me-pos1" class="sub">1er choix</label><select id="me-pos1" class="possel"></select></div>
+          <div><label for="me-pos2" class="sub">2e choix</label><select id="me-pos2" class="possel"></select></div>
+          <div><label for="me-pos3" class="sub">3e choix</label><select id="me-pos3" class="possel"></select></div>
         </div>
         <button class="btn" type="submit" id="me-submit">Je m'inscris</button>
       </form>
@@ -483,6 +499,14 @@ let db=null,myId=ls("fcsl-me",null),isCoach=true,dbState="loading";
 const D={players:[],events:[],rsvp:{},compos:[],matches:[]};
 function full(p){return((p.first||"")+" "+(p.last||"")).trim()||"Sans nom"}
 function shortName(n){const p=n.trim().split(/\s+/);if(p.length<2)return n;return p[0]+" "+p[p.length-1][0]+"."}
+const POSITIONS=[["G","Gardien"],["DG","Défense gauche"],["DC","Défense centre"],["DD","Défense droite"],["MG","Milieu gauche"],["MC","Milieu centre"],["MD","Milieu droit"],["AG","Attaque gauche"],["AC","Attaque centre"],["AD","Attaque droite"]];
+const POSL=Object.fromEntries(POSITIONS);
+function posText(p){return (p.pos||[]).filter(k=>POSL[k]).map(k=>POSL[k]).join(" · ")}
+function fillPosSelects(vals){vals=vals||["","",""];["me-pos1","me-pos2","me-pos3"].forEach((id,i)=>{const used=vals.filter((v,j)=>j!==i&&v);
+  $(id).innerHTML='<option value="">—</option>'+POSITIONS.map(([k,l])=>`<option value="${k}" ${used.includes(k)?"disabled":""} ${vals[i]===k?"selected":""}>${l}</option>`).join("")})}
+function readPos(){return ["me-pos1","me-pos2","me-pos3"].map(id=>$(id).value)}
+document.querySelectorAll(".possel").forEach(sel=>sel.addEventListener("change",()=>fillPosSelects(readPos())));
+fillPosSelects();
 function initials(p){return((p.first||"?")[0]+((p.last||"")[0]||"")).toUpperCase()}
 function sortPlayers(a){return a.slice().sort((x,y)=>(x.last||"").localeCompare(y.last||"","fr")||(x.first||"").localeCompare(y.first||"","fr"))}
 function playerById(id){return D.players.find(p=>p.id===id)}
@@ -499,12 +523,15 @@ document.querySelectorAll("nav.tabs button").forEach(b=>b.onclick=()=>{tab=b.dat
 let editingMe=false,armedDel=null;
 $("me-form").onsubmit=async e=>{e.preventDefault();if(!db)return;
   const first=$("me-first").value.trim(),last=$("me-last").value.trim();if(!first||!last)return;
+  const nv=$("me-num").value.trim();const num=nv===""?null:Math.round(+nv);
+  if(num!==null&&(!(num>=1&&num<=99))){toast("Le numéro de maillot doit être entre 1 et 99.");return}
+  const pos=readPos().filter(Boolean);
   $("me-submit").disabled=true;
   const id=(myId&&playerById(myId))?myId:"p-"+rid();
-  try{await queue("fc_players/"+id,()=>db.doc("fc_players/"+id).set({first,last,self:true,at:new Date().toISOString()}));myId=id;lss("fcsl-me",id);editingMe=false;toast("Inscription enregistrée ✓")}
+  try{await queue("fc_players/"+id,()=>db.doc("fc_players/"+id).set(Object.assign({},playerById(id)?(({id:_x,...r})=>r)(playerById(id)):{},{first,last,num,pos,self:true,at:new Date().toISOString()})));myId=id;lss("fcsl-me",id);editingMe=false;toast("Inscription enregistrée ✓")}
   catch(err){toast(errMsg(err))}
   $("me-submit").disabled=false;render();};
-$("me-edit").onclick=()=>{const me=playerById(myId);if(me){$("me-first").value=me.first||"";$("me-last").value=me.last||"";}editingMe=true;render();};
+$("me-edit").onclick=()=>{const me=playerById(myId);if(me){$("me-first").value=me.first||"";$("me-last").value=me.last||"";$("me-num").value=me.num||"";const p=(me.pos||[]).slice(0,3);while(p.length<3)p.push("");fillPosSelects(p);}editingMe=true;render();};
 $("me-del").onclick=async()=>{if(armedDel!=="me"){armedDel="me";$("me-del").textContent="Confirmer ?";$("me-del").classList.add("warn");setTimeout(()=>{if(armedDel==="me"){armedDel=null;render()}},3000);return}
   armedDel=null;try{await db.doc("fc_players/"+myId).delete();db.doc("fc_rsvp/"+myId).delete().catch(()=>{});myId=null;lss("fcsl-me",null);toast("Tu es désinscrit.")}catch(err){toast(errMsg(err))}render();};
 $("me-pick").onchange=e=>{const v=e.target.value;if(!v)return;myId=v;lss("fcsl-me",v);toast("Bonjour "+full(playerById(v)).split(" ")[0]+" !");render()};
@@ -532,7 +559,7 @@ function renderEffectif(){
   $("me-pickrow").hidden=!!me||!others.length;
   if(!me)$("me-pick").innerHTML='<option value="">Choisis ton nom…</option>'+others.map(p=>`<option value="${esc(p.id)}">${esc(full(p))}</option>`).join("");
   
-  if(me&&!editingMe){$("me-done").hidden=false;$("me-form").hidden=true;$("me-title").textContent="Mon inscription";$("me-name").textContent=full(me);{const[a,n]=attendance(me.id);$("me-att").textContent=n?`Tes présences : ${a} séance${a>1?"s":""} sur ${n}. Visible seulement par toi.`:"Pas encore de séance passée.";}
+  if(me&&!editingMe){$("me-done").hidden=false;$("me-form").hidden=true;$("me-title").textContent="Mon inscription";$("me-name").textContent=full(me);$("me-prof").textContent=[me.num?"Maillot n° "+me.num:"",posText(me)?"Postes : "+posText(me):""].filter(Boolean).join(" — ")||"Ajoute ton numéro de maillot et tes postes préférés avec « Modifier ».";{const[a,n]=attendance(me.id);$("me-att").textContent=n?`Tes présences : ${a} séance${a>1?"s":""} sur ${n}. Visible seulement par toi.`:"Pas encore de séance passée.";}
     $("me-del").textContent=armedDel==="me"?"Confirmer ?":"Me désinscrire";$("me-del").classList.toggle("warn",armedDel==="me");}
   else{$("me-done").hidden=true;$("me-form").hidden=false;$("me-title").textContent=me?"Modifier mon inscription":"Je m'inscris";$("me-submit").textContent=me?"Enregistrer":"Je m'inscris";}
   $("coach-add").hidden=!(dbState==="on"&&isCoach);
@@ -543,7 +570,7 @@ function renderEffectif(){
   $("plist").innerHTML='<ul class="plist">'+list.map(p=>{
     const tag=p.id===myId?'<span class="tag">Moi</span>':"";
     const del=isCoach?`<button class="mini ${armedDel===p.id?"warn":""}" data-del="${esc(p.id)}" id="del-${esc(p.id)}">${armedDel===p.id?"Confirmer ?":"Retirer"}</button>`:"";
-    return `<li><span class="av">${esc(initials(p))}</span><span class="nm"><b>${esc(full(p))}${tag}</b></span>${del}</li>`}).join("")+"</ul>";
+    return `<li><span class="av ${p.num?"numb":""}">${p.num?esc(p.num):esc(initials(p))}</span><span class="nm"><b>${esc(full(p))}${tag}</b>${posText(p)?`<span class="pos">${esc(posText(p))}</span>`:""}</span>${del}</li>`}).join("")+"</ul>";
 }
 
 /* =====================================================
