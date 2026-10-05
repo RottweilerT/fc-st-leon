@@ -541,7 +541,7 @@ function renderEffectif(){
   if(!list.length){$("plist").innerHTML='<div class="empty">Personne n\'est encore inscrit. Chaque joueur s\'inscrit ici avec son prénom et son nom.</div>';return}
   $("plist").innerHTML='<ul class="plist">'+list.map(p=>{const[a,n]=attendance(p.id);
     const tag=p.id===myId?'<span class="tag">Moi</span>':"";
-    const att=n?`Présences : ${a}/${n} (${Math.round(a/n*100)} %)`:"Pas encore de séance passée";
+    const att=n?`Présences : ${a}/${n}`:"Pas encore de séance passée";
     const del=isCoach?`<button class="mini ${armedDel===p.id?"warn":""}" data-del="${esc(p.id)}" id="del-${esc(p.id)}">${armedDel===p.id?"Confirmer ?":"Retirer"}</button>`:"";
     return `<li><span class="av">${esc(initials(p))}</span><span class="nm"><b>${esc(full(p))}${tag}</b><span class="num">${att}</span></span>${del}</li>`}).join("")+"</ul>";
 }
