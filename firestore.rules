@@ -1,0 +1,16 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /fc_players/{id} {
+      allow read, delete: if true;
+      allow create, update: if request.resource.data.first is string
+        && request.resource.data.last is string
+        && request.resource.data.first.size() > 0 && request.resource.data.first.size() <= 60
+        && request.resource.data.last.size() > 0 && request.resource.data.last.size() <= 60;
+    }
+    match /fc_events/{id} { allow read, write: if true; }
+    match /fc_rsvp/{id} { allow read, write: if true; }
+    match /fc_compos/{id} { allow read, write: if true; }
+    match /fc_matches/{id} { allow read, write: if true; }
+  }
+}
