@@ -423,6 +423,23 @@ ol.steps{margin:0 0 14px;padding-left:20px} ol.steps li{margin-bottom:4px}
   <!-- RESULTATS -->
   <main id="v-resultats" hidden>
     <div class="tiles" id="tiles"></div>
+    <div class="btnrow" style="margin-bottom:14px"><button class="btn sm" id="exp-all">Exporter tous les matchs (Excel)</button></div>
+    <div class="card" id="me-stats" hidden>
+      <h2>Mes stats <span class="tag">visible seulement par toi</span></h2>
+      <p class="hint" id="me-stats-sub"></p>
+      <div class="tablewrap"><table id="me-stats-t"></table></div>
+    </div>
+    <div class="card">
+      <h2>Résumé de l'équipe</h2>
+      <p class="hint" id="team-sub"></p>
+      <div class="tablewrap"><table id="team-t"></table></div>
+    </div>
+    <div class="card">
+      <h2>Moyennes par rôle</h2>
+      <div class="subtabs" id="role-mode" style="margin-bottom:10px"><button data-mode="match" aria-selected="true">Par match</button><button data-mode="min">Par minute</button></div>
+      <p class="hint" id="role-sub"></p>
+      <div class="tablewrap"><table id="role-t"></table></div>
+    </div>
     <div class="leaders">
       <div class="card" style="margin:0"><h2>Buteurs</h2><div id="lead-b"></div></div>
       <div class="card" style="margin:0"><h2>Passeurs</h2><div id="lead-pd"></div></div>
@@ -875,11 +892,66 @@ function renderMatch(){
 let openMatch=null,armedM=null;
 $("mlist").onclick=async e=>{const b=e.target.closest("button");if(!b)return;
   if(b.dataset.open){openMatch=openMatch===b.dataset.open?null:b.dataset.open;render();return}
+  if(b.dataset.expm){const m=D.matches.find(x=>x.id===b.dataset.expm);if(m)downloadCSV("FC-St-Leon_"+(m.date||"")+"_"+slug(m.adv)+".csv",matchRowsCSV(m));return}
   if(b.dataset.delm){const id=b.dataset.delm;if(armedM!==id){armedM=id;render();setTimeout(()=>{if(armedM===id){armedM=null;render()}},3000);return}
     armedM=null;try{await db.doc("fc_matches/"+id).delete();toast("Match supprimé.")}catch(err){toast(errMsg(err))}render()}};
+const ROLE_OF={G:"Gardien",DG:"Défense",DC:"Défense",DD:"Défense",MDC:"Milieu",MG:"Milieu",MC:"Milieu",MD:"Milieu",AG:"Attaque",AT:"Attaque",AD:"Attaque"};
+const ROLES=["Gardien","Défense","Milieu","Attaque"];
+const SK=["pr","pm","dr","dm","tr","tm","b","pd","rec","per","f","arr","enc"];
+let roleMode="match";
+$("role-mode").onclick=e=>{const b=e.target.closest("button[data-mode]");if(!b)return;roleMode=b.dataset.mode;
+  [...$("role-mode").children].forEach(x=>x.setAttribute("aria-selected",x===b));render()};
+function matchMin(m){return Math.max(60,...(m.rows||[]).map(r=>r.min||0))}
+function sumRows(rows){const t=Object.fromEntries(SK.map(k=>[k,0]));t.min=0;t.n=0;rows.forEach(r=>{SK.forEach(k=>t[k]+=r[k]||0);t.min+=r.min||0;t.n++});return t}
+function pct(a,b){return a+b?Math.round(a/(a+b)*100)+" %":"—"}
+function fmt1(x){return (Math.round(x*10)/10).toLocaleString("fr-FR")}
+function fmt2(x){return (Math.round(x*100)/100).toLocaleString("fr-FR",{minimumFractionDigits:2,maximumFractionDigits:2})}
+// rows of [label, total, isPercent]
+function fundamentals(t,us,them){const L=[];
+  if(us!=null){L.push(["Buts marqués",us]);L.push(["Buts encaissés",them])}else{L.push(["Buts",t.b])}
+  L.push(["Passes décisives",t.pd]);
+  L.push(["Passes réussies",t.pr],["Passes ratées",t.pm],["% passes réussies",pct(t.pr,t.pm),1]);
+  L.push(["Duels gagnés",t.dr],["Duels perdus",t.dm],["% duels gagnés",pct(t.dr,t.dm),1]);
+  L.push(["Tirs cadrés",t.tr],["Tirs non cadrés",t.tm],["% tirs cadrés",pct(t.tr,t.tm),1]);
+  L.push(["Ballons récupérés",t.rec],["Ballons perdus",t.per],["Fautes",t.f]);
+  return L}
+function statTable(L,nMatch,minutes){return "<tr><th>Stat</th><th>Total</th><th>Par match</th><th>Par minute</th></tr>"+L.map(([l,v,p])=>`<tr><td>${l}</td><td>${p?v:v}</td><td>${p||!nMatch?"—":fmt1(v/nMatch)}</td><td>${p||!minutes?"—":fmt2(v/minutes)}</td></tr>`).join("")}
+function csvCell(v){v=v==null?"":String(v);return /[;"\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}
+function matchRowsCSV(m){return (m.rows||[]).map(r=>[frDate(m.date),m.adv||"",r.name||"",r.pos||"",r.starter?"O":"N",r.min||0,...SK.map(k=>r[k]||0),FORM_LABEL[m.form]||"",(m.us||0)+"-"+(m.them||0)])}
+const CSV_HEAD=["Date","Adversaire","Joueur","Poste","Titulaire (O/N)","Minutes jouées","Passes réussies","Passes ratées","Duels réussis","Duels ratés","Tirs cadrés","Tirs non cadrés","Buts","Passes décisives","Ballons récupérés","Ballons perdus","Fautes","Arrêts (gardien)","Buts encaissés (gardien)","Formation","Score"];
+function downloadCSV(name,rows){const txt="\ufeff"+[CSV_HEAD,...rows].map(r=>r.map(csvCell).join(";")).join("\r\n");
+  const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([txt],{type:"text/csv;charset=utf-8"}));a.download=name;document.body.appendChild(a);a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1000);toast("Fichier téléchargé ✓")}
+function slug(t){return String(t||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^A-Za-z0-9]+/g,"-").replace(/^-|-$/g,"")}
+$("exp-all").onclick=()=>{const ms=D.matches.slice().sort((a,b)=>(a.date||"").localeCompare(b.date||""));
+  if(!ms.length){toast("Aucun match enregistré.");return}
+  downloadCSV("FC-St-Leon_tous-les-matchs_"+today()+".csv",ms.flatMap(matchRowsCSV))};
+function renderStats(ms){
+  const allRows=ms.flatMap(m=>m.rows||[]);const t=sumRows(allRows);
+  const minutes=ms.reduce((a,m)=>a+matchMin(m),0);
+  const us=ms.reduce((a,m)=>a+(m.us||0),0),them=ms.reduce((a,m)=>a+(m.them||0),0);
+  $("team-sub").textContent=ms.length?`Sur ${ms.length} match${ms.length>1?"s":""}, soit ${minutes} minutes de jeu.`:"Pas encore de match enregistré.";
+  $("team-t").innerHTML=ms.length?statTable(fundamentals(t,us,them).concat([["Arrêts (gardien)",t.arr]]),ms.length,minutes):"";
+  // roles
+  const by={};ROLES.forEach(r=>by[r]=[]);allRows.forEach(r=>{const ro=ROLE_OF[r.pos];if(ro)by[ro].push(r)});
+  const cols=[["Passes réussies","pr"],["% passes",null,"pr","pm"],["Duels gagnés","dr"],["% duels",null,"dr","dm"],["Tirs cadrés","tr"],["Tirs","T"],["Buts","b"],["Passes déc.","pd"],["Récup.","rec"],["Pertes","per"],["Fautes","f"],["Arrêts","arr"]];
+  const line=(label,rows)=>{const s=sumRows(rows);const div=roleMode==="min"?s.min:s.n;
+    const cell=c=>{if(!c[1]&&c[2])return pct(s[c[2]],s[c[3]]);const v=c[1]==="T"?s.tr+s.tm:s[c[1]];return div?(roleMode==="min"?fmt2(v/div):fmt1(v/div)):"—"};
+    return `<tr><td>${label}</td><td>${s.n}</td><td>${s.n?fmt1(s.min/s.n):"—"}</td>${cols.map(c=>`<td>${cell(c)}</td>`).join("")}</tr>`};
+  $("role-sub").textContent=roleMode==="min"?"Moyenne par minute jouée, pour un joueur à ce poste.":"Moyenne par joueur et par match, selon le poste principal joué.";
+  $("role-t").innerHTML=allRows.length?`<tr><th>Rôle</th><th>Appar.</th><th>Min moy.</th>${cols.map(c=>`<th>${c[0]}</th>`).join("")}</tr>`+ROLES.map(r=>line(r,by[r])).join("")+line("<b>Équipe</b>",allRows):'<tr><td>Pas encore de donnée.</td></tr>';
+  // my stats
+  const mine=myId?ms.flatMap(m=>(m.rows||[]).filter(r=>r.id===myId)):[];
+  $("me-stats").hidden=!mine.length;
+  if(mine.length){const s=sumRows(mine);
+    $("me-stats-sub").textContent=`${mine.length} match${mine.length>1?"s":""} joué${mine.length>1?"s":""}, ${s.min} minutes.`;
+    const L=fundamentals(s,null,null);if(s.arr||s.enc)L.push(["Arrêts (gardien)",s.arr],["Buts encaissés (gardien)",s.enc]);
+    $("me-stats-t").innerHTML=statTable(L,mine.length,s.min)}
+}
 function resOf(m){return m.us>m.them?"V":m.us===m.them?"N":"D"}
 function renderResultats(){
   const ms=D.matches.slice().sort((a,b)=>(b.date||"").localeCompare(a.date||""));
+  renderStats(ms);
   let v=0,n=0,d=0,bp=0,bc=0;ms.forEach(m=>{const r=resOf(m);r==="V"?v++:r==="N"?n++:d++;bp+=m.us||0;bc+=m.them||0});
   $("tiles").innerHTML=`<div class="tile"><span>Matchs</span><b class="num">${ms.length}</b></div><div class="tile"><span>V · N · D</span><b class="num">${v}<i> · </i>${n}<i> · </i>${d}</b></div><div class="tile"><span>Buts pour</span><b class="num">${bp}</b></div><div class="tile"><span>Buts contre</span><b class="num">${bc}</b></div>`;
   const agg={};ms.forEach(m=>(m.rows||[]).forEach(r=>{const a=agg[r.id]=agg[r.id]||{name:r.name,b:0,pd:0};a.b+=r.b||0;a.pd+=r.pd||0;const p=playerById(r.id);if(p)a.name=full(p)}));
@@ -892,7 +964,7 @@ function renderResultats(){
     if(openMatch===m.id){const rows=(m.rows||[]).slice().sort((a,b)=>(b.min||0)-(a.min||0));
       h+=`<div class="mdetail"><div class="tablewrap"><table><tr><th>Joueur</th><th>Poste</th><th>Min</th><th>Passes</th><th>Duels</th><th>Tirs</th><th>B</th><th>PD</th><th>Réc/Per</th><th>Fautes</th><th>Arrêts</th><th>Enc.</th></tr>`+
       rows.map(s=>`<tr><td>${esc(s.name)}${s.starter?"":" (R)"}</td><td>${esc(s.pos||"")}</td><td>${s.min||0}</td><td>${s.pr||0}/${(s.pr||0)+(s.pm||0)}</td><td>${s.dr||0}/${(s.dr||0)+(s.dm||0)}</td><td>${s.tr||0}/${(s.tr||0)+(s.tm||0)}</td><td>${s.b||0}</td><td>${s.pd||0}</td><td>${s.rec||0}/${s.per||0}</td><td>${s.f||0}</td><td>${s.arr||""}</td><td>${s.enc||""}</td></tr>`).join("")+`</table></div>`+
-      (isCoach?`<button class="mini ${armedM===m.id?"warn":""}" data-delm="${esc(m.id)}">${armedM===m.id?"Confirmer ?":"Supprimer ce match"}</button>`:"")+`</div>`}
+      `<button class="mini" data-expm="${esc(m.id)}">Exporter ce match (Excel)</button> `+(isCoach?`<button class="mini ${armedM===m.id?"warn":""}" data-delm="${esc(m.id)}">${armedM===m.id?"Confirmer ?":"Supprimer ce match"}</button>`:"")+`</div>`}
     return h+"</li>"}).join("")+"</ul>":'<div class="empty">Aucun match enregistré. Après un match, onglet Match → Export → « Enregistrer dans les résultats ».</div>';
 }
 
