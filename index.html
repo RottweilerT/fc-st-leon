@@ -61,6 +61,17 @@ nav.tabs button{flex:1;border:0;background:none;padding:9px 2px 10px;font-family
 nav.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--pitch)}
 .subtabs{display:flex;gap:6px;margin-bottom:12px}
 .subtabs button{flex:1;border:1.5px solid var(--line);background:var(--surface);border-radius:999px;padding:8px 6px;font-weight:600;font-size:14px}
+.formband{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 8px;margin:0 -2px 10px;scroll-snap-type:x proximity;scrollbar-width:thin}
+.formband button{flex:0 0 116px;scroll-snap-align:start;display:flex;flex-direction:column;align-items:center;gap:3px;border:1.5px solid var(--line);background:var(--surface);border-radius:12px;padding:8px 6px;text-align:center}
+.formband button b{font-family:var(--display);font-size:18px;font-weight:700;line-height:1}
+.formband button small{font-size:11px;color:var(--muted);line-height:1.2}
+.formband svg{width:64px;height:42px}
+.formband svg rect{fill:var(--grass);stroke:var(--chalk);stroke-width:1}
+.formband svg circle{fill:var(--shirt);stroke:var(--chalk);stroke-width:.6}
+.formband svg circle.gk{fill:var(--gk)}
+.formband button.on{border-color:var(--pitch);box-shadow:0 0 0 2px var(--pitch);background:var(--pitch-soft)}
+.formpick{display:inline-flex;align-items:center;gap:6px}
+.formpick select{border:0;background:transparent;color:inherit;font:inherit;font-weight:700;padding:0;min-height:0;width:auto}
 .formsel button{display:flex;flex-direction:column;align-items:center;gap:1px;font-family:var(--display);font-size:18px;font-weight:700;border-radius:12px;padding:8px 6px}
 .formsel small{font-family:var(--body);font-size:12px;font-weight:500;opacity:.8}
 .subtabs button[aria-selected="true"]{background:var(--pitch);border-color:var(--pitch);color:var(--pitch-ink)}
@@ -359,10 +370,7 @@ ol.steps{margin:0 0 14px;padding-left:20px} ol.steps li{margin-bottom:4px}
       </div>
       <div class="notice" id="locknote" hidden>Le match a commencé : les changements se font dans « En jeu ». Tu peux quand même changer de formation ici.</div>
       <div class="section-label"><span>Formation</span><span class="num" id="startcount">0 / 7</span></div>
-      <div class="subtabs formsel" role="radiogroup" aria-label="Formation">
-        <button data-form="231" id="fm-231" role="radio">2-3-1<small>2 déf. · 3 milieux</small></button>
-        <button data-form="321" id="fm-321" role="radio">3-2-1<small>3 déf. · 2 milieux</small></button>
-      </div>
+      <div class="formband" id="formband" role="radiogroup" aria-label="Formation"></div>
       <div id="setuppitch"></div>
       <p class="hint" id="setuphint"></p>
       <div class="grid" id="rostergrid"></div>
@@ -381,7 +389,7 @@ ol.steps{margin:0 0 14px;padding-left:20px} ol.steps li{margin-bottom:4px}
       <div class="bar">
         <button class="pill" id="subbtn">Changement</button>
         <button class="pill" id="halfbtn">Fin 1re MT</button>
-        <button class="pill" id="formbtn">2-3-1</button>
+        <label class="pill formpick" for="formlive">Formation <select id="formlive"></select></label>
         <p class="hint" id="subhint"></p>
       </div>
       <div id="matchpitch"></div>
@@ -450,18 +458,21 @@ const FIREBASE_CONFIG = {
 <script>
 /* ---------- constants ---------- */
 // Horizontal pitch, attacking right: column = line; rows on a 6-track grid (each player spans 2)
-const FORMS={
- "231":[{k:"G",l:"Gardien",c:1,r:"3/5"},
-  {k:"DG",l:"Défenseur gauche",c:2,r:"2/4"},{k:"DD",l:"Défenseur droit",c:2,r:"4/6"},
-  {k:"MG",l:"Milieu gauche",c:3,r:"1/3"},{k:"MC",l:"Milieu centre",c:3,r:"3/5"},{k:"MD",l:"Milieu droit",c:3,r:"5/7"},
-  {k:"AT",l:"Attaquant",c:4,r:"3/5"}],
- "321":[{k:"G",l:"Gardien",c:1,r:"3/5"},
-  {k:"DG",l:"Défenseur gauche",c:2,r:"1/3"},{k:"DC",l:"Défenseur central",c:2,r:"3/5"},{k:"DD",l:"Défenseur droit",c:2,r:"5/7"},
-  {k:"MG",l:"Milieu gauche",c:3,r:"2/4"},{k:"MD",l:"Milieu droit",c:3,r:"4/6"},
-  {k:"AT",l:"Attaquant",c:4,r:"3/5"}]};
-const FORM_LABEL={"231":"2-3-1","321":"3-2-1"};
-const ALLPOS=["G","DG","DC","DD","MG","MC","MD","AT"];
-const SL={G:"Gardien",DG:"Défenseur gauche",DC:"Défenseur central",DD:"Défenseur droit",MG:"Milieu gauche",MC:"Milieu centre",MD:"Milieu droit",AT:"Attaquant"};
+const SL={G:"Gardien",DG:"Défenseur gauche",DC:"Défenseur central",DD:"Défenseur droit",MDC:"Milieu défensif",MG:"Milieu gauche",MC:"Milieu centre",MD:"Milieu droit",AG:"Attaquant gauche",AT:"Attaquant",AD:"Attaquant droit"};
+const ALLPOS=Object.keys(SL);
+const LINE={G:0,DG:1,DC:1,DD:1,MDC:2,MG:2,MC:2,MD:2,AG:3,AT:3,AD:3};
+// The most common 7-a-side systems: each column is a line, from the goalkeeper to the attack
+const FORM_DEF={
+ "231":{label:"2-3-1",desc:"2 déf. · 3 milieux · 1 att.",cols:[["G"],["DG","DD"],["MG","MC","MD"],["AT"]]},
+ "321":{label:"3-2-1",desc:"3 déf. · 2 milieux · 1 att.",cols:[["G"],["DG","DC","DD"],["MG","MD"],["AT"]]},
+ "312":{label:"3-1-2",desc:"3 déf. · 1 milieu · 2 att.",cols:[["G"],["DG","DC","DD"],["MC"],["AG","AD"]]},
+ "2121":{label:"2-1-2-1",desc:"Losange : 2 déf. · 3 milieux · 1 att.",cols:[["G"],["DG","DD"],["MDC"],["MG","MD"],["AT"]]},
+ "222":{label:"2-2-2",desc:"2 déf. · 2 milieux · 2 att.",cols:[["G"],["DG","DD"],["MG","MD"],["AG","AD"]]},
+ "132":{label:"1-3-2",desc:"1 déf. · 3 milieux · 2 att.",cols:[["G"],["DC"],["MG","MC","MD"],["AG","AD"]]}};
+const FORM_ORDER=["231","321","312","2121","222","132"];
+const ROWS={1:["3/5"],2:["2/4","4/6"],3:["1/3","3/5","5/7"]};
+const FORMS=Object.fromEntries(Object.entries(FORM_DEF).map(([f,d])=>[f,d.cols.flatMap((col,ci)=>col.map((k,ri)=>({k,l:SL[k],c:ci+1,r:ROWS[col.length][ri]})))]));
+const FORM_LABEL=Object.fromEntries(Object.entries(FORM_DEF).map(([f,d])=>[f,d.label]));
 function slotsDef(){return FORMS[S.form]||FORMS["231"]}
 function order(){return slotsDef().map(s=>s.k)}
 const FIELD=[
@@ -724,16 +735,22 @@ $("f-date").onchange=e=>{S.date=e.target.value;save()};
 $("f-adv").oninput=e=>{S.adv=e.target.value;save()};
 $("go").onclick=()=>{S.sub="live";activeSlot=null;save();render()};
 $("clearpitch").onclick=()=>{if(S.started)return;order().forEach(k=>{if(S.slots[k]!=null)leave(S.slots[k])});activeSlot=null;save();render()};
+function miniPitch(d){const n=d.cols.length;let h='<svg viewBox="0 0 60 40" aria-hidden="true"><rect x="1" y="1" width="58" height="38" rx="3"/>';
+  d.cols.forEach((col,ci)=>{const x=5+ci*(50/(n-1));col.forEach((k,ri)=>{const y=20+(ri-(col.length-1)/2)*11;h+=`<circle cx="${x.toFixed(1)}" cy="${y}" r="3.2" class="${k==="G"?"gk":""}"/>`})});return h+"</svg>"}
 function setForm(f){if(!FORMS[f]||f===S.form)return;
-  // 2-3-1 <-> 3-2-1: the central midfielder drops to centre-back and back up
-  const from=f==="321"?"MC":"DC",to=f==="321"?"DC":"MC";
-  const id=S.slots[from];S.form=f;if(id!=null){leave(id);enter(id,to)}
-  ALLPOS.forEach(k=>{if(!order().includes(k)&&S.slots[k]!=null)leave(S.slots[k])});
-  if(activeSlot&&!order().includes(activeSlot))activeSlot=null;
-  if(pick&&!order().includes(pick))pick=null;
-  setupMsg=id!=null?"Formation "+FORM_LABEL[f]+" : "+shortName(nm(id))+" passe "+SL[to].toLowerCase()+".":"Formation "+FORM_LABEL[f]+".";
+  const newKeys=FORMS[f].map(x=>x.k);
+  // players whose position does not exist in the new system move to the nearest free position (same line first)
+  const displaced=ALLPOS.filter(k=>S.slots[k]!=null&&!newKeys.includes(k)).map(k=>({id:S.slots[k],line:LINE[k]})).sort((a,b)=>a.line-b.line);
+  displaced.forEach(d=>leave(d.id));
+  S.form=f;const moves=[];
+  displaced.forEach(d=>{const free=newKeys.filter(k=>S.slots[k]==null&&k!=="G");if(!free.length)return;
+    free.sort((a,b)=>Math.abs(LINE[a]-d.line)-Math.abs(LINE[b]-d.line));enter(d.id,free[0]);moves.push(shortName(nm(d.id))+" → "+SL[free[0]].toLowerCase())});
+  if(activeSlot&&!newKeys.includes(activeSlot))activeSlot=null;
+  if(pick&&!newKeys.includes(pick))pick=null;
+  setupMsg="Formation "+FORM_LABEL[f]+"."+(moves.length?" "+moves.join(", ")+".":"");
   save();render()}
-document.querySelectorAll("[data-form]").forEach(b=>b.onclick=()=>setForm(b.dataset.form));
+$("formband").innerHTML=FORM_ORDER.map(f=>[f,FORM_DEF[f]]).map(([f,d])=>`<button data-form="${f}" id="fm-${f}" role="radio">${miniPitch(d)}<b>${d.label}</b><small>${d.desc}</small></button>`).join("");
+$("formband").onclick=e=>{const b=e.target.closest("[data-form]");if(b)setForm(b.dataset.form)};
 function nextEmpty(){return order().find(k=>S.slots[k]==null)||null}
 $("setuppitch").onclick=e=>{const b=e.target.closest(".slot");if(!b||S.started)return;const k=b.dataset.s;activeSlot=activeSlot===k?null:k;setupMsg="";render()};
 $("rostergrid").onclick=e=>{const c=e.target.closest(".chip");if(!c||S.started)return;const id=c.dataset.id,p=P(id);setupMsg="";
@@ -752,7 +769,8 @@ $("compolist").onclick=async e=>{const b=e.target.closest("button");if(!b)return
   let miss=0;order().forEach(k=>{const id=c.slots&&c.slots[k];if(id&&playerById(id)&&!P(id).cur)enter(id,k);else if(id)miss++});
   activeSlot=null;setupMsg="Compo « "+c.name+" » chargée."+(miss?" "+miss+" joueur(s) ne sont plus inscrits.":"");save();render()};
 
-$("formbtn").onclick=()=>{setForm(S.form==="231"?"321":"231");$("last").textContent=setupMsg;setupMsg=""};
+$("formlive").innerHTML=FORM_ORDER.map(f=>[f,FORM_DEF[f]]).map(([f,d])=>`<option value="${f}">${d.label}</option>`).join("");
+$("formlive").onchange=e=>{setForm(e.target.value);$("last").textContent=setupMsg;setupMsg=""};
 $("subbtn").onclick=()=>{subMode=!subMode;pick=null;sel=null;render()};
 $("halfbtn").onclick=()=>{if(!armed){armed=true;render();setTimeout(()=>{if(armed){armed=false;render()}},3000);return}
   armed=false;pauseClock();if(S.half===1)S.half=2;else{S.ended=true;S.sub="export"}save();render()};
@@ -794,7 +812,7 @@ $("no").onclick=()=>{$("confirm").hidden=true};
 $("yes").onclick=()=>{S=blank();sel=null;subMode=false;pick=null;activeSlot=null;buzzed=0;$("confirm").hidden=true;$("last").textContent="";save();render()};
 
 function pitchHTML(mode){
-  return `<div class="pitch"><i class="ln half"></i><i class="ln circle"></i><i class="ln boxl"></i><i class="ln boxr"></i>`+
+  return `<div class="pitch" style="grid-template-columns:repeat(${(FORM_DEF[S.form]||FORM_DEF["231"]).cols.length},1fr)"><i class="ln half"></i><i class="ln circle"></i><i class="ln boxl"></i><i class="ln boxr"></i>`+
   slotsDef().map(s=>{const id=S.slots[s.k],p=id!=null?P(id):null;
     let st="";if(mode==="setup"&&activeSlot===s.k)st="on";
     if(mode==="live"){if(subMode&&pick===s.k)st="pick";else if(!subMode&&id!=null&&sel===id)st="on"}
@@ -810,7 +828,7 @@ function renderMatch(){
     if(document.activeElement!==$("f-date"))$("f-date").value=S.date;
     if(document.activeElement!==$("f-adv"))$("f-adv").value=S.adv;
     $("locknote").hidden=!S.started;
-    ["231","321"].forEach(f=>{const b=$("fm-"+f);b.setAttribute("aria-selected",S.form===f);b.setAttribute("aria-checked",S.form===f)});$("startcount").textContent=placed+" / 7";
+    Object.keys(FORM_DEF).forEach(f=>{const b=$("fm-"+f);b.setAttribute("aria-checked",S.form===f);b.classList.toggle("on",S.form===f)});$("startcount").textContent=placed+" / 7";
     $("setuppitch").innerHTML=pitchHTML("setup");
     const roster=sortPlayers(D.players);
     $("setuphint").textContent=setupMsg||(activeSlot?"Choisis le joueur pour : "+SL[activeSlot]+".":"Touche un poste puis un joueur. Ou touche directement les joueurs : ils remplissent les postes dans l'ordre (gardien, défense, milieu, attaque).");
@@ -827,7 +845,7 @@ function renderMatch(){
     $("benchcount").textContent=bench.length+" joueur"+(bench.length>1?"s":"");
     $("benchgrid").innerHTML=bench.map(id=>{const p=P(id);return `<button class="chip bench" data-id="${esc(id)}" id="b-${esc(id)}"><b>${esc(shortName(nm(id)))}</b><span class="num">${mins(p)}′ joué${p.st.b?" · "+p.st.b+" but":""}</span></button>`}).join("");
     $("subbtn").classList.toggle("on",subMode);$("subbtn").textContent=subMode?"Terminé":"Changement";
-    $("halfbtn").hidden=S.ended;$("formbtn").textContent="Formation "+FORM_LABEL[S.form]+" ⇄";$("halfbtn").classList.toggle("warn",armed);
+    $("halfbtn").hidden=S.ended;$("formlive").value=S.form;$("halfbtn").classList.toggle("warn",armed);
     $("halfbtn").textContent=armed?"Confirmer ?":(S.half===1?"Fin 1re MT":"Fin du match");
     $("subhint").textContent=subMode?(pick?"Touche le remplaçant sur le banc, ou un autre poste pour échanger.":"Touche le poste qui change sur le terrain."):
       (placed<7?"Il manque "+(7-placed)+" joueur(s) : fais un changement pour compléter.":"Touche un joueur, puis l'action.");
