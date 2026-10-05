@@ -917,7 +917,7 @@ function fundamentals(t,us,them){const L=[];
   return L}
 function statTable(L,nMatch,minutes){return "<tr><th>Stat</th><th>Total</th><th>Par match</th><th>Par minute</th></tr>"+L.map(([l,v,p])=>`<tr><td>${l}</td><td>${p?v:v}</td><td>${p||!nMatch?"—":fmt1(v/nMatch)}</td><td>${p||!minutes?"—":fmt2(v/minutes)}</td></tr>`).join("")}
 function csvCell(v){v=v==null?"":String(v);return /[;"\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}
-function matchRowsCSV(m){return (m.rows||[]).map(r=>[frDate(m.date),m.adv||"",r.name||"",r.pos||"",r.starter?"O":"N",r.min||0,...SK.map(k=>r[k]||0),FORM_LABEL[m.form]||"",(m.us||0)+"-"+(m.them||0)])}
+function matchRowsCSV(m){return (m.rows||[]).map(r=>[frDate(m.date),m.adv||"",r.name||"",r.pos||"",r.starter?"O":"N",r.min||0,...SK.map(k=>r[k]||0),FORM_LABEL[m.form]||"",(m.us||0)+" à "+(m.them||0)])}
 const CSV_HEAD=["Date","Adversaire","Joueur","Poste","Titulaire (O/N)","Minutes jouées","Passes réussies","Passes ratées","Duels réussis","Duels ratés","Tirs cadrés","Tirs non cadrés","Buts","Passes décisives","Ballons récupérés","Ballons perdus","Fautes","Arrêts (gardien)","Buts encaissés (gardien)","Formation","Score"];
 function downloadCSV(name,rows){const txt="\ufeff"+[CSV_HEAD,...rows].map(r=>r.map(csvCell).join(";")).join("\r\n");
   const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([txt],{type:"text/csv;charset=utf-8"}));a.download=name;document.body.appendChild(a);a.click();
