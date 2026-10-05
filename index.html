@@ -257,6 +257,7 @@ ol.steps{margin:0 0 14px;padding-left:20px} ol.steps li{margin-bottom:4px}
       <h2 id="me-title">Je m'inscris</h2>
       <div id="me-done" hidden>
         <p>Tu es inscrit comme <b id="me-name"></b>.</p>
+        <p class="hint num" id="me-att"></p>
         <div class="btnrow"><button class="mini" id="me-edit">Modifier</button><button class="mini" id="me-forget">Ce n'est pas moi</button><button class="mini" id="me-del">Me désinscrire</button></div>
       </div>
       <form id="me-form">
@@ -531,7 +532,7 @@ function renderEffectif(){
   $("me-pickrow").hidden=!!me||!others.length;
   if(!me)$("me-pick").innerHTML='<option value="">Choisis ton nom…</option>'+others.map(p=>`<option value="${esc(p.id)}">${esc(full(p))}</option>`).join("");
   
-  if(me&&!editingMe){$("me-done").hidden=false;$("me-form").hidden=true;$("me-title").textContent="Mon inscription";$("me-name").textContent=full(me);
+  if(me&&!editingMe){$("me-done").hidden=false;$("me-form").hidden=true;$("me-title").textContent="Mon inscription";$("me-name").textContent=full(me);{const[a,n]=attendance(me.id);$("me-att").textContent=n?`Tes présences : ${a} séance${a>1?"s":""} sur ${n}. Visible seulement par toi.`:"Pas encore de séance passée.";}
     $("me-del").textContent=armedDel==="me"?"Confirmer ?":"Me désinscrire";$("me-del").classList.toggle("warn",armedDel==="me");}
   else{$("me-done").hidden=true;$("me-form").hidden=false;$("me-title").textContent=me?"Modifier mon inscription":"Je m'inscris";$("me-submit").textContent=me?"Enregistrer":"Je m'inscris";}
   $("coach-add").hidden=!(dbState==="on"&&isCoach);
@@ -539,11 +540,10 @@ function renderEffectif(){
   $("pcount").textContent=list.length?list.length+" joueur"+(list.length>1?"s":""):"";
   if(dbState!=="on"){$("plist").innerHTML="";return}
   if(!list.length){$("plist").innerHTML='<div class="empty">Personne n\'est encore inscrit. Chaque joueur s\'inscrit ici avec son prénom et son nom.</div>';return}
-  $("plist").innerHTML='<ul class="plist">'+list.map(p=>{const[a,n]=attendance(p.id);
+  $("plist").innerHTML='<ul class="plist">'+list.map(p=>{
     const tag=p.id===myId?'<span class="tag">Moi</span>':"";
-    const att=n?`Présences : ${a}/${n}`:"Pas encore de séance passée";
     const del=isCoach?`<button class="mini ${armedDel===p.id?"warn":""}" data-del="${esc(p.id)}" id="del-${esc(p.id)}">${armedDel===p.id?"Confirmer ?":"Retirer"}</button>`:"";
-    return `<li><span class="av">${esc(initials(p))}</span><span class="nm"><b>${esc(full(p))}${tag}</b><span class="num">${att}</span></span>${del}</li>`}).join("")+"</ul>";
+    return `<li><span class="av">${esc(initials(p))}</span><span class="nm"><b>${esc(full(p))}${tag}</b></span>${del}</li>`}).join("")+"</ul>";
 }
 
 /* =====================================================
