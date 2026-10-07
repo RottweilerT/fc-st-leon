@@ -101,6 +101,9 @@ input[type=text],input[type=date],input[type=time],input[type=number],select{wid
 .mini.warn{background:var(--bad-bg);border-color:var(--bad);color:var(--bad)}
 
 /* roster list */
+.pindel{margin-top:6px}
+.pindel input{min-height:36px;padding:6px 8px}
+.tag.lock{background:var(--gold-bg);color:var(--gold)}
 .posgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:2px 0 12px}
 @media (max-width:420px){.posgrid{grid-template-columns:1fr}}
 label.sub{font-weight:500;font-size:12px}
@@ -275,7 +278,7 @@ ol.steps{margin:0 0 14px;padding-left:20px} ol.steps li{margin-bottom:4px}
         <p>Tu es inscrit comme <b id="me-name"></b>.</p>
         <p class="num" id="me-prof"></p>
         <p class="hint num" id="me-att"></p>
-        <div class="btnrow"><button class="mini" id="me-edit">Modifier</button><button class="mini" id="me-forget">Ce n'est pas moi</button><button class="mini" id="me-del">Me désinscrire</button></div>
+        <div class="btnrow"><button class="mini" id="me-edit">Modifier</button><button class="mini" id="me-forget">Ce n'est pas moi</button><button class="mini" id="me-del">Me désinscrire</button><button class="mini" id="me-pinoff" hidden>Retirer mon code</button></div>
       </div>
       <form id="me-form">
         <div class="row">
@@ -292,9 +295,16 @@ ol.steps{margin:0 0 14px;padding-left:20px} ol.steps li{margin-bottom:4px}
           <div><label for="me-pos2" class="sub">2e choix</label><select id="me-pos2" class="possel"></select></div>
           <div><label for="me-pos3" class="sub">3e choix</label><select id="me-pos3" class="possel"></select></div>
         </div>
+        <div class="row" style="margin-bottom:4px">
+          <div><label for="me-pin">Code d'accès (4 à 6 chiffres)</label><input type="password" id="me-pin" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="new-password" placeholder="Facultatif"></div>
+          <div></div>
+        </div>
+        <p class="hint" id="me-pin-hint">Avec un code, personne d'autre ne peut ouvrir ton profil sur son téléphone ni le supprimer.</p>
         <button class="btn" type="submit" id="me-submit">Je m'inscris</button>
       </form>
-      <div id="me-pickrow" style="margin-top:12px"><label for="me-pick">Déjà inscrit sur un autre téléphone ?</label><select id="me-pick"></select></div>
+      <div id="me-pickrow" style="margin-top:12px"><label for="me-pick">Déjà inscrit sur un autre téléphone ?</label><select id="me-pick"></select>
+        <form id="pin-ask" class="inline" style="margin-top:8px" hidden><input type="password" id="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="current-password" placeholder="Code d'accès" aria-label="Code d'accès"><button class="btn sm" type="submit">Valider</button></form>
+        <p class="hint" id="pin-msg" hidden></p></div>
     </div>
     <div class="card" id="coach-add" hidden>
       <h2>Inscrire un autre joueur</h2>
@@ -548,27 +558,47 @@ document.querySelectorAll("nav.tabs button").forEach(b=>b.onclick=()=>{tab=b.dat
 /* =====================================================
    EFFECTIF
    ===================================================== */
-let editingMe=false,armedDel=null;
+let editingMe=false,armedDel=null,pendingPick=null,pinFails=0,pinLockUntil=0;
+async function sha(t){const b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(t));return[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("")}
+function pinHashFor(salt,code){return sha("fcsl-pin:"+salt+":"+code)}
+async function checkPin(p,code){if(!p||!p.pinHash)return true;if(Date.now()<pinLockUntil)return false;
+  const ok=(await pinHashFor(p.pinSalt||"",code))===p.pinHash;if(ok)pinFails=0;else if(++pinFails>=5){pinFails=0;pinLockUntil=Date.now()+30000}return ok}
+function lockMsg(){return Date.now()<pinLockUntil?"Trop d'essais : réessaie dans 30 secondes.":"Code incorrect."}
 $("me-form").onsubmit=async e=>{e.preventDefault();if(!db)return;
   const first=$("me-first").value.trim(),last=$("me-last").value.trim();if(!first||!last)return;
   const nv=$("me-num").value.trim();const num=nv===""?null:Math.round(+nv);
   if(num!==null&&(!(num>=1&&num<=99))){toast("Le numéro de maillot doit être entre 1 et 99.");return}
   const pos=readPos().filter(Boolean);
+  const pin=$("me-pin").value.trim();
+  if(pin&&!/^[0-9]{4,6}$/.test(pin)){toast("Le code d'accès doit faire 4 à 6 chiffres.");return}
+  const extra={};if(pin){extra.pinSalt=rid();extra.pinHash=await pinHashFor(extra.pinSalt,pin)}
   $("me-submit").disabled=true;
   const id=(myId&&playerById(myId))?myId:"p-"+rid();
-  try{await queue("fc_players/"+id,()=>db.doc("fc_players/"+id).set(Object.assign({},playerById(id)?(({id:_x,...r})=>r)(playerById(id)):{},{first,last,num,pos,self:true,at:new Date().toISOString()})));myId=id;lss("fcsl-me",id);editingMe=false;toast("Inscription enregistrée ✓")}
+  try{await queue("fc_players/"+id,()=>db.doc("fc_players/"+id).set(Object.assign({},playerById(id)?(({id:_x,...r})=>r)(playerById(id)):{},Object.assign({first,last,num,pos,self:true,at:new Date().toISOString()},extra))));myId=id;lss("fcsl-me",id);editingMe=false;$("me-pin").value="";toast(pin?"Inscription et code enregistrés ✓":"Inscription enregistrée ✓")}
   catch(err){toast(errMsg(err))}
   $("me-submit").disabled=false;render();};
 $("me-edit").onclick=()=>{const me=playerById(myId);if(me){$("me-first").value=me.first||"";$("me-last").value=me.last||"";$("me-num").value=me.num||"";const p=(me.pos||[]).slice(0,3);while(p.length<3)p.push("");fillPosSelects(p);}editingMe=true;render();};
 $("me-del").onclick=async()=>{if(armedDel!=="me"){armedDel="me";$("me-del").textContent="Confirmer ?";$("me-del").classList.add("warn");setTimeout(()=>{if(armedDel==="me"){armedDel=null;render()}},3000);return}
   armedDel=null;try{await db.doc("fc_players/"+myId).delete();db.doc("fc_rsvp/"+myId).delete().catch(()=>{});myId=null;lss("fcsl-me",null);toast("Tu es désinscrit.")}catch(err){toast(errMsg(err))}render();};
-$("me-pick").onchange=e=>{const v=e.target.value;if(!v)return;myId=v;lss("fcsl-me",v);toast("Bonjour "+full(playerById(v)).split(" ")[0]+" !");render()};
+function pickAs(v){myId=v;lss("fcsl-me",v);pendingPick=null;$("pin-ask").hidden=true;$("pin-msg").hidden=true;toast("Bonjour "+full(playerById(v)).split(" ")[0]+" !");render()}
+$("me-pick").onchange=e=>{const v=e.target.value;if(!v)return;const p=playerById(v);
+  if(p&&p.pinHash){pendingPick=v;$("pin-ask").hidden=false;$("pin-msg").hidden=false;$("pin-msg").textContent="Ce profil est protégé : entre son code d'accès.";$("pin-input").value="";$("pin-input").focus();return}
+  pickAs(v)};
+$("pin-ask").onsubmit=async e=>{e.preventDefault();const p=playerById(pendingPick);if(!p)return;
+  if(await checkPin(p,$("pin-input").value.trim()))pickAs(p.id);else{$("pin-msg").textContent=lockMsg();$("pin-input").value=""}};
+$("me-pinoff").onclick=async()=>{const me=playerById(myId);if(!me)return;const r=Object.assign({},me);delete r.id;delete r.pinHash;delete r.pinSalt;
+  try{await db.doc("fc_players/"+me.id).set(r);toast("Code retiré.")}catch(err){toast(errMsg(err))}};
 $("me-forget").onclick=()=>{myId=null;lss("fcsl-me",null);editingMe=false;render()};
 $("add-form").onsubmit=async e=>{e.preventDefault();if(!db||!isCoach)return;
   const first=$("add-first").value.trim(),last=$("add-last").value.trim();if(!first||!last)return;
   try{await db.collection("fc_players").doc("c-"+rid()).set({first,last,self:false,at:new Date().toISOString()});$("add-first").value="";$("add-last").value="";toast(first+" "+last+" ajouté ✓")}
   catch(err){toast(errMsg(err))}};
-$("plist").onclick=async e=>{const b=e.target.closest("button[data-del]");if(!b)return;const id=b.dataset.del;
+$("plist").addEventListener("submit",async e=>{const f=e.target.closest("form[data-pindel]");if(!f)return;e.preventDefault();
+  const p=playerById(f.dataset.pindel);if(!p)return;const code=f.querySelector("input").value.trim();
+  if(!(await checkPin(p,code))){toast(lockMsg());f.querySelector("input").value="";return}
+  armedDel=null;try{await db.doc("fc_players/"+p.id).delete();db.doc("fc_rsvp/"+p.id).delete().catch(()=>{});toast("Joueur retiré.")}catch(err){toast(errMsg(err))}render()});
+$("plist").onclick=async e=>{const b=e.target.closest("button[data-del]");if(!b)return;const id=b.dataset.del;const p=playerById(id);
+  if(p&&p.pinHash&&id!==myId){armedDel=armedDel===id?null:id;render();if(armedDel){const inp=document.querySelector('form[data-pindel="'+id+'"] input');if(inp)inp.focus()}return}
   if(armedDel!==id){armedDel=id;render();setTimeout(()=>{if(armedDel===id){armedDel=null;render()}},3000);return}
   armedDel=null;try{await db.doc("fc_players/"+id).delete();if(D.rsvp[id])db.doc("fc_rsvp/"+id).delete().catch(()=>{});toast("Joueur retiré.")}catch(err){toast(errMsg(err))}render();};
 
@@ -587,18 +617,20 @@ function renderEffectif(){
   $("me-pickrow").hidden=!!me||!others.length;
   if(!me)$("me-pick").innerHTML='<option value="">Choisis ton nom…</option>'+others.map(p=>`<option value="${esc(p.id)}">${esc(full(p))}</option>`).join("");
   
-  if(me&&!editingMe){$("me-done").hidden=false;$("me-form").hidden=true;$("me-title").textContent="Mon inscription";$("me-name").textContent=full(me);$("me-prof").textContent=[me.num?"Maillot n° "+me.num:"",posText(me)?"Postes : "+posText(me):""].filter(Boolean).join(" — ")||"Ajoute ton numéro de maillot et tes postes préférés avec « Modifier ».";{const[a,n]=attendance(me.id);$("me-att").textContent=n?`Tes présences : ${a} séance${a>1?"s":""} sur ${n}. Visible seulement par toi.`:"Pas encore de séance passée.";}
+  if(me&&!editingMe){$("me-done").hidden=false;$("me-form").hidden=true;$("me-title").textContent="Mon inscription";$("me-name").textContent=full(me);$("me-pinoff").hidden=!me.pinHash;$("me-prof").textContent=[me.num?"Maillot n° "+me.num:"",posText(me)?"Postes : "+posText(me):""].filter(Boolean).join(" — ")||"Ajoute ton numéro de maillot et tes postes préférés avec « Modifier ».";{const[a,n]=attendance(me.id);$("me-att").textContent=n?`Tes présences : ${a} séance${a>1?"s":""} sur ${n}. Visible seulement par toi.`:"Pas encore de séance passée.";}
     $("me-del").textContent=armedDel==="me"?"Confirmer ?":"Me désinscrire";$("me-del").classList.toggle("warn",armedDel==="me");}
-  else{$("me-done").hidden=true;$("me-form").hidden=false;$("me-title").textContent=me?"Modifier mon inscription":"Je m'inscris";$("me-submit").textContent=me?"Enregistrer":"Je m'inscris";}
+  else{$("me-done").hidden=true;$("me-form").hidden=false;$("me-title").textContent=me?"Modifier mon inscription":"Je m'inscris";$("me-submit").textContent=me?"Enregistrer":"Je m'inscris";$("me-pin-hint").textContent=me&&me.pinHash?"Tu as déjà un code : laisse vide pour le garder, ou tape un nouveau code pour le changer.":"Avec un code, personne d'autre ne peut ouvrir ton profil sur son téléphone ni le supprimer.";}
   $("coach-add").hidden=!(dbState==="on"&&isCoach);
   const list=sortPlayers(D.players);
   $("pcount").textContent=list.length?list.length+" joueur"+(list.length>1?"s":""):"";
   if(dbState!=="on"){$("plist").innerHTML="";return}
   if(!list.length){$("plist").innerHTML='<div class="empty">Personne n\'est encore inscrit. Chaque joueur s\'inscrit ici avec son prénom et son nom.</div>';return}
   $("plist").innerHTML='<ul class="plist">'+list.map(p=>{
-    const tag=p.id===myId?'<span class="tag">Moi</span>':"";
-    const del=isCoach?`<button class="mini ${armedDel===p.id?"warn":""}" data-del="${esc(p.id)}" id="del-${esc(p.id)}">${armedDel===p.id?"Confirmer ?":"Retirer"}</button>`:"";
-    return `<li><span class="av ${p.num?"numb":""}">${p.num?esc(p.num):esc(initials(p))}</span><span class="nm"><b>${esc(full(p))}${tag}</b>${posText(p)?`<span class="pos">${esc(posText(p))}</span>`:""}</span>${del}</li>`}).join("")+"</ul>";
+    const tag=(p.id===myId?'<span class="tag">Moi</span>':"")+(p.pinHash?'<span class="tag lock">Protégé</span>':"");
+    const prot=p.pinHash&&p.id!==myId;
+    const del=isCoach?`<button class="mini ${armedDel===p.id?"warn":""}" data-del="${esc(p.id)}" id="del-${esc(p.id)}">${armedDel===p.id?(prot?"Annuler":"Confirmer ?"):"Retirer"}</button>`:"";
+    const pinrow=prot&&armedDel===p.id?`<form class="inline pindel" data-pindel="${esc(p.id)}"><input type="password" inputmode="numeric" maxlength="6" placeholder="Code de ce joueur" aria-label="Code d'accès de ${esc(full(p))}"><button class="btn sm danger" type="submit">Supprimer</button></form>`:"";
+    return `<li><span class="av ${p.num?"numb":""}">${p.num?esc(p.num):esc(initials(p))}</span><span class="nm"><b>${esc(full(p))}${tag}</b>${posText(p)?`<span class="pos">${esc(posText(p))}</span>`:""}${pinrow}</span>${del}</li>`}).join("")+"</ul>";
 }
 
 /* =====================================================
