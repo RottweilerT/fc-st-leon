@@ -486,6 +486,7 @@ ol.steps{margin:0 0 14px;padding-left:20px} ol.steps li{margin-bottom:4px}
     </div>
     <div class="subtabs" id="nt-filter"><button data-f="open" aria-selected="true">En cours</button><button data-f="done">Résolus</button><button data-f="all">Tous</button></div>
     <div class="section-label"><span>Tickets</span><span class="num" id="nt-count"></span></div>
+    <div class="btnrow" style="margin-bottom:10px"><button class="mini" id="nt-copy">Copier les tickets en cours</button></div>
     <div id="nt-list"></div>
   </main>
 
@@ -1054,6 +1055,11 @@ $("nt-list").onclick=async e=>{const b=e.target.closest("button");if(!b)return;c
     $("nt-title").textContent="Modifier le ticket";$("nt-submit").textContent="Enregistrer";$("nt-cancel").hidden=false;$("v-notes").scrollTop=0;$("nt-subject").focus();return}
   if(b.dataset.act==="del"){if(armedNt!==n.id){armedNt=n.id;render();setTimeout(()=>{if(armedNt===n.id){armedNt=null;render()}},3000);return}
     armedNt=null;try{await db.doc("fc_events/"+n.id).delete();toast("Ticket supprimé.")}catch(err){toast(errMsg(err))}}};
+$("nt-copy").onclick=async()=>{const l=D.notes.filter(n=>n.status!=="done").sort((a,b)=>((b.prio??1)-(a.prio??1))||(a.at||"").localeCompare(b.at||""));
+  if(!l.length){toast("Aucun ticket en cours.");return}
+  const txt="Tickets FC St Léon en cours ("+l.length+") :\n\n"+l.map((n,i)=>`${i+1}. [${NCAT[n.cat]||"Note"}${n.prio===2?", priorité haute":""}] ${n.title}${n.body?"\n   "+n.body.replace(/\n/g,"\n   "):""}\n   (${n.author||"Anonyme"}, ${NSTAT[n.status]||"Ouvert"})`).join("\n\n");
+  try{await navigator.clipboard.writeText(txt);toast("Tickets copiés : colle-les dans ta conversation avec Claude ✓")}
+  catch(e){const ta=document.createElement("textarea");ta.value=txt;document.body.appendChild(ta);ta.select();try{document.execCommand("copy");toast("Tickets copiés ✓")}catch(_){toast("Copie impossible sur ce téléphone.")}ta.remove()}};
 function renderNotes(){
   const me=myId&&playerById(myId);
   $("nt-author").textContent=me?"Signé : "+full(me):"Inscris-toi ou choisis ton nom dans Effectif pour signer tes tickets (sinon : anonyme).";
