@@ -17,6 +17,7 @@
   --shirt:#FFFFFF; --shirt-ink:#1F5C3A; --gk:#F2C230; --gk-ink:#2B2100; --ring:#FFE066; --pick:#FF8A4C;
   --good:#237A4B; --good-bg:#E1F2E7; --bad:#B8402F; --bad-bg:#F8E3DF;
   --gold:#A87E00; --gold-bg:#FBF1CF; --blue:#2F5F9E; --blue-bg:#E2EBF7;
+  --we-bg:#E8EEF8; --we-line:#C3D1E8; --we-ink:#2F4F86;
   --display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
   --body:"Barlow",system-ui,-apple-system,"Segoe UI",Arial,sans-serif;
 }
@@ -26,14 +27,14 @@
   --grass:#1F4A2E; --grass2:#235235; --chalk:#BFD3C5; --label-bg:rgba(0,0,0,.45);
   --shirt:#E9F2EC; --shirt-ink:#16402A;
   --good:#5CC98C; --good-bg:#17301F; --bad:#EE7B69; --bad-bg:#3A1C17;
-  --gold:#F0C43A; --gold-bg:#3A3112; --blue:#8DB4EA; --blue-bg:#1B2A40; color-scheme:dark}}
+  --gold:#F0C43A; --gold-bg:#3A3112; --blue:#8DB4EA; --blue-bg:#1B2A40; --we-bg:#1A2436; --we-line:#2C3B57; --we-ink:#A9C3EE; color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#0F1813; --surface:#18241D; --ink:#E6EEE8; --muted:#93A399; --line:#2A3A30;
   --pitch:#5FB384; --pitch-ink:#0B1510; --pitch-soft:#1E3327;
   --grass:#1F4A2E; --grass2:#235235; --chalk:#BFD3C5; --label-bg:rgba(0,0,0,.45);
   --shirt:#E9F2EC; --shirt-ink:#16402A;
   --good:#5CC98C; --good-bg:#17301F; --bad:#EE7B69; --bad-bg:#3A1C17;
-  --gold:#F0C43A; --gold-bg:#3A3112; --blue:#8DB4EA; --blue-bg:#1B2A40; color-scheme:dark}
+  --gold:#F0C43A; --gold-bg:#3A3112; --blue:#8DB4EA; --blue-bg:#1B2A40; --we-bg:#1A2436; --we-line:#2C3B57; --we-ink:#A9C3EE; color-scheme:dark}
 
 html,body{height:100%}
 body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;-webkit-tap-highlight-color:transparent}
@@ -133,6 +134,8 @@ label.sub{font-weight:500;font-size:12px}
 .cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:14px}
 .cal .dow{font-size:11px;font-weight:600;color:var(--muted);text-align:center;text-transform:uppercase;letter-spacing:.06em;padding:2px 0}
 .day{position:relative;aspect-ratio:1/1;max-width:100%;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:4px;display:flex;flex-direction:column;align-items:center;justify-content:space-between;font-size:14px;font-weight:600;min-width:0}
+.day.we{background:var(--we-bg);border-color:var(--we-line);color:var(--we-ink)}
+.cal .dow:nth-child(6),.cal .dow:nth-child(7){color:var(--we-ink)}
 .day.out{opacity:.38}
 .day.today{border-color:var(--pitch);border-width:2px}
 .day.sel{background:var(--pitch);color:var(--pitch-ink);border-color:var(--pitch)}
@@ -755,7 +758,7 @@ function renderCalendrier(){
   const t=today();let h=["L","M","M","J","V","S","D"].map(d=>`<div class="dow">${d}</div>`).join("");
   for(let i=0;i<42;i++){const d=new Date(start);d.setDate(start.getDate()+i);const s=ymd(d);
     if(i===35&&d.getMonth()!==calMonth.getMonth())break;
-    const evs=byDay[s]||[];const cls=["day",d.getMonth()!==calMonth.getMonth()?"out":"",s===t?"today":"",s===selDay?"sel":""].join(" ");
+    const evs=byDay[s]||[];const cls=["day",(d.getDay()===0||d.getDay()===6)?"we":"",d.getMonth()!==calMonth.getMonth()?"out":"",s===t?"today":"",s===selDay?"sel":""].join(" ");
     h+=`<button class="${cls}" data-d="${s}" aria-label="${longDate(s)}${evs.length?", "+evs.length+" séance(s)":""}"><span class="num">${d.getDate()}</span><span class="dots">${evs.slice(0,3).map(ev=>`<i class="dot k-${ev.kind}"></i>`).join("")}</span></button>`}
   $("cal").innerHTML=h;
   $("daytitle").textContent=cap(longDate(selDay));
