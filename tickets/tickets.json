@@ -1,16 +1,5 @@
 [
   {
-    "id": "n-muziufmazvmgl5",
-    "titre": "Notes",
-    "details": "Le titre pourra aussi être tous et signifié que le ticket s'applique à tout les onglets",
-    "categorie": "tache",
-    "priorite": 1,
-    "statut": "open",
-    "auteur": "Armand CHARRIN",
-    "cree_le": "2026-10-08T12:37:29.363Z",
-    "modifie_le": "2026-10-08T12:37:29.362Z"
-  },
-  {
     "id": "n-muzhbgdisw2h43",
     "titre": "Calendrier",
     "details": "Changer la couleur des cases du wk dans le calendrier",
@@ -31,5 +20,16 @@
     "auteur": "",
     "cree_le": "2026-10-08T12:18:02.068Z",
     "modifie_le": "2026-10-08T12:31:49.000Z"
+  },
+  {
+    "id": "n-muziufmazvmgl5",
+    "titre": "Notes",
+    "details": "Le titre pourra aussi être tous et signifié que le ticket s'applique à tout les onglets",
+    "categorie": "tache",
+    "priorite": 1,
+    "statut": "done",
+    "auteur": "Armand CHARRIN",
+    "cree_le": "2026-10-08T12:37:29.363Z",
+    "modifie_le": "2026-10-08T12:39:57.000Z"
   }
 ]
