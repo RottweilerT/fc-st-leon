@@ -1,27 +1,5 @@
 [
   {
-    "id": "n-muzi3qp3l7vz2w",
-    "titre": "Notes",
-    "details": "Le titre des tickets doit correspondre à l'un des cinq angles effectifs, calendrier match résultat notes",
-    "categorie": "tache",
-    "priorite": 1,
-    "statut": "open",
-    "auteur": "",
-    "cree_le": "2026-10-08T12:16:44.007Z",
-    "modifie_le": "2026-10-08T12:16:44.005Z"
-  },
-  {
-    "id": "n-muzi5exggy7lo7",
-    "titre": "Notes",
-    "details": "Une fois que Claude aura appliquer la modification demandé par un ticket ce ticket pourra être automatiquement passé en résolu",
-    "categorie": "tache",
-    "priorite": 1,
-    "statut": "open",
-    "auteur": "",
-    "cree_le": "2026-10-08T12:18:02.068Z",
-    "modifie_le": "2026-10-08T12:18:02.067Z"
-  },
-  {
     "id": "n-muzhbgdisw2h43",
     "titre": "Calendrier",
     "details": "Changer la couleur des cases du wk dans le calendrier",
@@ -31,5 +9,27 @@
     "auteur": "",
     "cree_le": "2026-10-08T11:54:44.262Z",
     "modifie_le": "2026-10-08T12:12:30.775Z"
+  },
+  {
+    "id": "n-muzi3qp3l7vz2w",
+    "titre": "Notes",
+    "details": "Le titre des tickets doit correspondre à l'un des cinq angles effectifs, calendrier match résultat notes ainsi que \"tous\"",
+    "categorie": "tache",
+    "priorite": 1,
+    "statut": "done",
+    "auteur": "",
+    "cree_le": "2026-10-08T12:16:44.007Z",
+    "modifie_le": "2026-10-08T12:31:49.000Z"
+  },
+  {
+    "id": "n-muzi5exggy7lo7",
+    "titre": "Notes",
+    "details": "Une fois que Claude aura appliquer la modification demandé par un ticket ce ticket pourra être automatiquement passé en résolu",
+    "categorie": "tache",
+    "priorite": 1,
+    "statut": "done",
+    "auteur": "",
+    "cree_le": "2026-10-08T12:18:02.068Z",
+    "modifie_le": "2026-10-08T12:31:49.000Z"
   }
 ]
