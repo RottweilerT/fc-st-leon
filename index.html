@@ -122,6 +122,20 @@ textarea.notearea{min-height:80px;font:inherit;white-space:pre-wrap}
 .leaders{grid-template-columns:repeat(3,1fr)}
 @media (max-width:640px){.leaders{grid-template-columns:1fr}}
 .histcard{margin:0 0 12px}
+:root{--r-g:#F2C230;--r-d:#8DB4EA;--r-m:#7CC79A;--r-a:#F4A06B;--r-ink:#14201A}
+.tl{margin:6px 0 4px}
+.tl-row{display:grid;grid-template-columns:92px 1fr;gap:8px;align-items:center;margin:3px 0}
+.tl-name{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tl-track{position:relative;height:22px;background:var(--bg);border-radius:6px;overflow:hidden}
+.tl-track::after{content:"";position:absolute;left:50%;top:0;bottom:0;border-left:2px dashed var(--line)}
+.tl-seg{position:absolute;top:2px;bottom:2px;border-radius:4px;color:var(--r-ink);font:700 11.5px/18px var(--display);text-align:center;overflow:hidden;white-space:nowrap}
+.tl-seg.G{background:var(--r-g)}.tl-seg.D{background:var(--r-d)}.tl-seg.M{background:var(--r-m)}.tl-seg.A{background:var(--r-a)}
+.tl-axis{display:grid;grid-template-columns:92px 1fr;gap:8px;font-size:11.5px;color:var(--muted)}
+.tl-axis div{display:flex;justify-content:space-between}
+.tl-legend{display:flex;flex-wrap:wrap;gap:10px;font-size:12.5px;color:var(--muted);margin:6px 0 2px}
+.tl-legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:4px;vertical-align:-1px}
+.possec{margin:10px 0 12px}
+.possec h3{font:700 15px var(--display);text-transform:uppercase;letter-spacing:.03em;margin:0 0 2px}
 .histcard summary{cursor:pointer;font-weight:600;padding:2px 0}
 .mdetail .histcard{background:var(--bg);border-radius:10px;padding:8px 10px}
 ol.hist{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:2px;max-height:360px;overflow-y:auto}
@@ -447,6 +461,7 @@ ol.steps{margin:0 0 14px;padding-left:20px} ol.steps li{margin-bottom:4px}
       <div class="stack" style="margin-bottom:16px">
         <button class="btn" id="savematch" hidden>Enregistrer dans les résultats</button>
       </div>
+      <details class="card histcard" open><summary>Qui a joué où <span class="num" id="poscount"></span></summary><div id="poslive"></div></details>
       <details class="card histcard"><summary>Historique du match <span class="num" id="histcount"></span></summary><div id="histlive"></div></details>
       <div class="section-label"><span>Lignes pour Excel</span></div>
       <ol class="steps">
@@ -469,11 +484,12 @@ ol.steps{margin:0 0 14px;padding-left:20px} ol.steps li{margin-bottom:4px}
   <main id="v-resultats" hidden>
     <div class="tiles" id="tiles"></div>
     <div id="votes-open"></div>
-    <div class="btnrow" style="margin-bottom:14px"><button class="btn sm" id="exp-all">Exporter tous les matchs (Excel)</button></div>
+    <div class="btnrow" style="margin-bottom:14px"><button class="btn sm" id="exp-all">Exporter tous les matchs (Excel)</button> <button class="btn sm ghost" id="exp-pos">Exporter le détail par poste (Excel)</button></div>
     <div class="card" id="me-stats" hidden>
       <h2>Mes stats <span class="tag">visible seulement par toi</span></h2>
       <p class="hint" id="me-stats-sub"></p>
       <div class="tablewrap"><table id="me-stats-t"></table></div>
+      <div class="possec" id="me-pos" hidden><h3>Mes stats par poste</h3><p class="hint" id="me-pos-sub" style="margin:0 0 6px"></p><div class="tablewrap"><table id="me-pos-t"></table></div></div>
     </div>
     <div class="card">
       <h2>Résumé de l'équipe</h2>
@@ -481,7 +497,8 @@ ol.steps{margin:0 0 14px;padding-left:20px} ol.steps li{margin-bottom:4px}
       <div class="tablewrap"><table id="team-t"></table></div>
     </div>
     <div class="card">
-      <h2>Moyennes par rôle</h2>
+      <h2>Moyennes par rôle et par poste</h2>
+      <div class="subtabs" id="role-group" style="margin-bottom:8px"><button data-g="role" aria-selected="true">Par rôle</button><button data-g="pos">Par poste</button></div>
       <div class="subtabs" id="role-mode" style="margin-bottom:10px"><button data-mode="match" aria-selected="true">Par match</button><button data-mode="min">Par minute</button></div>
       <p class="hint" id="role-sub"></p>
       <div class="tablewrap"><table id="role-t"></table></div>
@@ -801,10 +818,10 @@ function renderCalendrier(){
    MATCH (counter — local to this device)
    ===================================================== */
 function newP(){return{starter:false,cur:null,since:null,ms:{},st:Object.fromEntries(ALL.map(x=>[x.k,0]))}}
-function blank(){return{mid:"m-"+rid(),date:today(),adv:"",sub:"setup",half:1,acc:[0,0],runAt:null,started:false,ended:false,log:[],
+function blank(){return{mid:"m-"+rid(),date:today(),adv:"",sub:"setup",half:1,acc:[0,0],runAt:null,started:false,ended:false,log:[],spells:[],
   form:"231",slots:Object.fromEntries(ALLPOS.map(k=>[k,null])),bench:[],p:{},names:{},saved:false}}
 let S=ls(MK,null);if(!S||!S.slots||!S.p||!S.acc)S=blank();
-if(!FORMS[S.form])S.form="231";if(!Array.isArray(S.hist))S.hist=[];if(!Array.isArray(S.bench))S.bench=[];ALLPOS.forEach(k=>{if(!(k in S.slots))S.slots[k]=null});
+if(!FORMS[S.form])S.form="231";if(!Array.isArray(S.hist))S.hist=[];if(!Array.isArray(S.spells))S.spells=[];if(!Array.isArray(S.bench))S.bench=[];ALLPOS.forEach(k=>{if(!(k in S.slots))S.slots[k]=null});
 let sel=null,subMode=false,pick=null,activeSlot=null,armed=false,buzzed=0,setupMsg="";
 function save(){lss(MK,S)}
 function P(id){if(!S.p[id])S.p[id]=newP();return S.p[id]}
@@ -817,8 +834,16 @@ function mins(p){return Math.round(playedMs(p)/60000)}
 function mainPos(p){const m=Object.assign({},p.ms);if(p.cur)m[p.cur]=(m[p.cur]||0)+mt()-p.since;let b="",v=-1;for(const k in m)if(m[k]>v){v=m[k];b=k}return b}
 function fmt(ms){const s=Math.floor(ms/1000);return String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0")}
 function pauseClock(){if(S.runAt){S.acc[S.half-1]+=Date.now()-S.runAt;S.runAt=null}}
-function leave(id){const p=P(id);if(!p.cur)return;p.ms[p.cur]=(p.ms[p.cur]||0)+mt()-p.since;S.slots[p.cur]=null;p.cur=null;p.since=null}
-function enter(id,k){const p=P(id);p.cur=k;p.since=mt();S.slots[k]=id;nm(id)}
+function leave(id){const p=P(id);if(!p.cur)return;spClose(id);p.ms[p.cur]=(p.ms[p.cur]||0)+mt()-p.since;S.slots[p.cur]=null;p.cur=null;p.since=null}
+function enter(id,k){const p=P(id);p.cur=k;p.since=mt();S.slots[k]=id;nm(id);spOpen(id,k)}
+/* stints: one continuous period of a player at one position, within one half */
+function gmin(){return halfMs()/60000+(S.half===2?30:0)}
+function spOpen(id,k){if(!S.started||S.ended)return;S.spells.push({id,k,h:S.half,t0:mt(),m0:gmin(),t1:null,m1:null,st:{}})}
+function spClose(id){const s=S.spells.find(x=>x.id===id&&x.t1==null);if(s){s.t1=mt();s.m1=gmin()}}
+function spCloseAll(){S.spells.forEach(s=>{if(s.t1==null){s.t1=mt();s.m1=gmin()}})}
+function spOpenAll(){order().forEach(k=>{const id=S.slots[k];if(id!=null)spOpen(id,k)})}
+function spellsOut(){return S.spells.map(s=>{const t1=s.t1!=null?s.t1:mt(),m1=s.m1!=null?s.m1:gmin();const st={};for(const k in s.st)if(s.st[k])st[k]=s.st[k];
+  return{id:s.id,name:nm(s.id),k:s.k,h:s.h,m0:Math.round(s.m0),m1:Math.round(m1),min:Math.round((t1-s.t0)/6000)/10,st}}).filter(s=>s.min>0||Object.keys(s.st).length)}
 function assign(id,k){const p=P(id),prev=p.cur,occ=S.slots[k];if(occ===id)return;
   if(prev){leave(id);if(occ!=null){leave(occ);enter(occ,prev)}}else if(occ!=null){leave(occ);if(S.sub==="live")toBench(occ,true)}
   enter(id,k)}
@@ -827,7 +852,7 @@ function score(){let a=0,b=0;for(const id in S.p){a+=S.p[id].st.b;b+=S.p[id].st.
 function rosterIds(){const ids=sortPlayers(D.players).map(p=>p.id);for(const id in S.p)if(!ids.includes(id)&&(S.p[id].cur||playedMs(S.p[id])>0))ids.push(id);return ids}
 
 $("clockbtn").onclick=()=>{if(S.ended)return;
-  if(S.runAt)pauseClock();else{if(!S.started){S.started=true;for(const id in S.p)if(S.p[id].cur)S.p[id].starter=true;S.runAt=Date.now();hist("ko",{})}else if(S.half===2&&!S.hist.some(x=>x.type==="ko2")){S.runAt=Date.now();hist("ko2",{})}else S.runAt=Date.now()}
+  if(S.runAt)pauseClock();else{if(!S.started){S.started=true;for(const id in S.p)if(S.p[id].cur)S.p[id].starter=true;S.runAt=Date.now();hist("ko",{});spOpenAll()}else if(S.half===2&&!S.hist.some(x=>x.type==="ko2")){S.runAt=Date.now();hist("ko2",{})}else S.runAt=Date.now()}
   save();render()};
 function renderClock(){const h=halfMs(),over=h>=HALF&&!S.ended,r=!!S.runAt;
   $("clocktime").textContent=fmt(h);$("clock").classList.toggle("over",over);
@@ -891,7 +916,7 @@ $("formlive").innerHTML=FORM_ORDER.map(f=>[f,FORM_DEF[f]]).map(([f,d])=>`<option
 $("formlive").onchange=e=>{setForm(e.target.value);$("last").textContent=setupMsg;setupMsg=""};
 $("subbtn").onclick=()=>{subMode=!subMode;pick=null;sel=null;render()};
 $("halfbtn").onclick=()=>{if(!armed){armed=true;render();setTimeout(()=>{if(armed){armed=false;render()}},3000);return}
-  armed=false;pauseClock();if(S.half===1){hist("ht",{});S.half=2}else{hist("ft",{});S.ended=true;S.sub="export"}save();render()};
+  armed=false;pauseClock();if(S.half===1){hist("ht",{});spCloseAll();S.half=2;spOpenAll()}else{hist("ft",{});spCloseAll();S.ended=true;S.sub="export"}save();render()};
 $("matchpitch").onclick=e=>{const b=e.target.closest(".slot");if(!b)return;const k=b.dataset.s,id=S.slots[k];
   if(subMode){if(pick==null)pick=k;else if(pick===k)pick=null;else{const a=S.slots[pick];if(a!=null){assign(a,k);if(S.started)hist("swap",{a,b:id,ka:pick,kb:k})}else if(id!=null){assign(id,pick);if(S.started)hist("move",{a:id,ka:k,kb:pick})}pick=null;save()}}
   else{if(id==null)return;sel=sel===id?null:id}
@@ -906,10 +931,11 @@ $("benchgrid").onclick=e=>{const c=e.target.closest(".chip");if(!c)return;const 
 function gameMin(){return Math.floor(halfMs()/60000)+1+(S.half===2?30:0)}
 function hist(type,data){const ev=Object.assign({type,m:gameMin(),h:S.half},data);S.hist.push(ev);return ev}
 function act(k){const gk=GK.some(x=>x.k===k);const id=gk?goalie():sel;if(id==null)return;
-  P(id).st[k]++;S.log.push({id,k,ev:hist("stat",{k,id})});S.saved=false;save();
+  P(id).st[k]++;const si=S.spells.findIndex(x=>x.id===id&&x.t1==null);if(si>=0){const t=S.spells[si].st;t[k]=(t[k]||0)+1}
+  S.log.push({id,k,si,ev:hist("stat",{k,id,pos:P(id).cur||""})});S.saved=false;save();
   $("last").textContent="+1 "+LABEL[k]+(gk?" ("+shortName(nm(id))+")":"");render();
   const el=$("k-"+k);if(el){el.classList.remove("flash");void el.offsetWidth;el.classList.add("flash")}}
-$("undo").onclick=()=>{const e=S.log.pop();if(!e)return;if(e.ev){const i=S.hist.indexOf(e.ev);if(i<0){const j=S.hist.findIndex(x=>x.type==="stat"&&x.k===e.k&&x.id===e.id&&x.m===e.ev.m);if(j>=0)S.hist.splice(j,1)}else S.hist.splice(i,1)}const p=P(e.id);p.st[e.k]=Math.max(0,p.st[e.k]-1);S.saved=false;
+$("undo").onclick=()=>{const e=S.log.pop();if(!e)return;if(e.ev){const i=S.hist.indexOf(e.ev);if(i<0){const j=S.hist.findIndex(x=>x.type==="stat"&&x.k===e.k&&x.id===e.id&&x.m===e.ev.m);if(j>=0)S.hist.splice(j,1)}else S.hist.splice(i,1)}if(e.si!=null&&S.spells[e.si]){const t=S.spells[e.si].st;t[e.k]=Math.max(0,(t[e.k]||0)-1)}const p=P(e.id);p.st[e.k]=Math.max(0,p.st[e.k]-1);S.saved=false;
   $("last").textContent="Annulé : "+LABEL[e.k]+" ("+shortName(nm(e.id))+")";save();render()};
 $("keys").innerHTML=FIELD.map(x=>`<button class="k ${x.c}" data-k="${x.k}" id="k-${x.k}">${x.l}<em class="num"></em></button>`).join("")
   +`<div class="gklabel" id="gklabel">Gardien</div>`+GK.map(x=>`<button class="k ${x.c}" data-k="${x.k}" id="k-${x.k}">${x.l}<em class="num"></em></button>`).join("");
@@ -917,7 +943,7 @@ $("keys").onclick=e=>{const b=e.target.closest(".k");if(b)act(b.dataset.k)};
 
 // one readable line per event: {m, h, ev, p, d}
 function histRows(list,nameOf){let us=0,them=0;return list.map(e=>{const r={m:e.m,h:e.h,ev:"",p:"",d:""};
-  if(e.type==="stat"){r.ev=LABEL[e.k]||e.k;r.p=nameOf(e.id);if(e.k==="b"){us++;r.d="Score "+us+" à "+them}if(e.k==="enc"){them++;r.d="Score "+us+" à "+them}}
+  if(e.type==="stat"){r.ev=LABEL[e.k]||e.k;r.p=nameOf(e.id);const d=[];if(e.pos&&SL[e.pos])d.push(SL[e.pos]);if(e.k==="b"){us++;d.push("Score "+us+" à "+them)}if(e.k==="enc"){them++;d.push("Score "+us+" à "+them)}r.d=d.join(" · ")}
   else if(e.type==="sub"){r.ev="Changement";r.p=nameOf(e.in);r.d=(e.out!=null?"remplace "+nameOf(e.out)+" · ":"entre · ")+(SL[e.k]||e.k)}
   else if(e.type==="swap"){r.ev="Échange de postes";r.p=nameOf(e.a)+(e.b!=null?" ↔ "+nameOf(e.b):"");r.d=(SL[e.ka]||"")+" ↔ "+(SL[e.kb]||"")}
   else if(e.type==="move"){r.ev="Changement de poste";r.p=nameOf(e.a);r.d=(SL[e.ka]||"")+" → "+(SL[e.kb]||"")}
@@ -939,9 +965,9 @@ $("savematch").onclick=async()=>{if(!db||!isCoach)return;
   if(!S.adv.trim()){toast("Indique l'adversaire dans « Avant » avant d'enregistrer.");return}
   const[us,them]=score();
   const rows=rowIds().map(id=>{const p=S.p[id];return Object.assign({id,name:nm(id),pos:mainPos(p),starter:isStarter(p),min:mins(p)},p.st)});
-  const histOut=histRows(S.hist,nm);
+  const histOut=histRows(S.hist,nm),spOut=spellsOut();
   $("savematch").disabled=true;
-  try{await db.doc("fc_matches/"+S.mid).set(Object.assign({date:S.date,adv:S.adv.trim(),form:S.form,us,them,rows,hist:histOut},(D.matches.find(x=>x.id===S.mid)||{}).at?{}:{at:new Date().toISOString()}),{merge:true});S.saved=true;save();toast("Match enregistré ✓ Le vote pour l'homme du match est ouvert 7 jours dans Résultats.")}
+  try{await db.doc("fc_matches/"+S.mid).set(Object.assign({date:S.date,adv:S.adv.trim(),form:S.form,us,them,rows,hist:histOut,spells:spOut},(D.matches.find(x=>x.id===S.mid)||{}).at?{}:{at:new Date().toISOString()}),{merge:true});S.saved=true;save();toast("Match enregistré ✓ Le vote pour l'homme du match est ouvert 7 jours dans Résultats.")}
   catch(err){toast(errMsg(err))}
   $("savematch").disabled=false;render()};
 $("reset").onclick=()=>{$("confirm").hidden=false};
@@ -1006,10 +1032,11 @@ function renderMatch(){
   if(S.sub==="export"){
     const r=rowIds(),[a,b]=score();
     $("finalscore").textContent="FC St Léon "+a+"–"+b+(S.adv?" "+S.adv:"");
-    $("sumtable").innerHTML="<tr><th>Joueur</th><th>Poste</th><th>Min</th><th>Passes</th><th>Duels</th><th>Tirs</th><th>B</th><th>PD</th><th>Réc/Per</th><th>Fautes</th><th>Arrêts</th><th>Enc.</th></tr>"+
-      (r.length?r.map(id=>{const p=S.p[id],s=p.st;return `<tr><td>${esc(nm(id))}${isStarter(p)?"":" (R)"}</td><td>${mainPos(p)}</td><td>${mins(p)}</td><td>${s.pr}/${s.pr+s.pm}</td><td>${s.dr}/${s.dr+s.dm}</td><td>${s.tr}/${s.tr+s.tm}</td><td>${s.b}</td><td>${s.pd}</td><td>${s.rec}/${s.per}</td><td>${s.f}</td><td>${s.arr||""}</td><td>${s.enc||""}</td></tr>`}).join(""):'<tr><td colspan="12">Aucune donnée pour l\'instant.</td></tr>');
+    $("sumtable").innerHTML="<tr><th>Joueur</th><th>Poste(s)</th><th>Min</th><th>Passes</th><th>Duels</th><th>Tirs</th><th>B</th><th>PD</th><th>Réc/Per</th><th>Fautes</th><th>Arrêts</th><th>Enc.</th></tr>"+
+      (r.length?r.map(id=>{const p=S.p[id],s=p.st;return `<tr><td>${esc(nm(id))}${isStarter(p)?"":" (R)"}</td><td>${posPath(spellsOut(),id)||mainPos(p)}</td><td>${mins(p)}</td><td>${s.pr}/${s.pr+s.pm}</td><td>${s.dr}/${s.dr+s.dm}</td><td>${s.tr}/${s.tr+s.tm}</td><td>${s.b}</td><td>${s.pd}</td><td>${s.rec}/${s.per}</td><td>${s.f}</td><td>${s.arr||""}</td><td>${s.enc||""}</td></tr>`}).join(""):'<tr><td colspan="12">Aucune donnée pour l\'instant.</td></tr>');
     $("tsv").value=tsv();
-    const hr=histRows(S.hist,nm);$("histlive").innerHTML=histHTML(hr);$("histcount").textContent=hr.length?"("+hr.length+")":"";
+    const hr=histRows(S.hist,nm);$("histlive").innerHTML=histHTML(hr);
+    const sp=spellsOut();$("poslive").innerHTML=posBlock(sp,nm);$("poscount").textContent=sp.length?"("+sp.length+" passages)":"";$("histcount").textContent=hr.length?"("+hr.length+")":"";
     $("savematch").hidden=!(dbState==="on"&&isCoach);
     $("savematch").textContent=S.saved?"Enregistré ✓ (réenregistrer)":"Enregistrer dans les résultats";
   }
@@ -1023,13 +1050,15 @@ $("mlist").onclick=async e=>{const b=e.target.closest("button");if(!b)return;
   if(b.dataset.vote){castVote(b.dataset.vote,b.dataset.cand);return}
   if(b.dataset.open){openMatch=openMatch===b.dataset.open?null:b.dataset.open;render();return}
   if(b.dataset.exph){const m=D.matches.find(x=>x.id===b.dataset.exph);if(m)downloadCSV("FC-St-Leon_historique_"+(m.date||"")+"_"+slug(m.adv)+".csv",(m.hist||[]).map(r=>[frDate(m.date),m.adv||"",r.m,r.h===2?"2e MT":"1re MT",r.ev,r.p,r.d]),["Date","Adversaire","Minute","Mi-temps","Événement","Joueur(s)","Détail"]);return}
+  if(b.dataset.expp){const m=D.matches.find(x=>x.id===b.dataset.expp);if(m)downloadCSV("FC-St-Leon_postes_"+(m.date||"")+"_"+slug(m.adv)+".csv",posRowsCSV(m),POS_HEAD);return}
   if(b.dataset.expm){const m=D.matches.find(x=>x.id===b.dataset.expm);if(m)downloadCSV("FC-St-Leon_"+(m.date||"")+"_"+slug(m.adv)+".csv",matchRowsCSV(m));return}
   if(b.dataset.delm){const id=b.dataset.delm;if(armedM!==id){armedM=id;render();setTimeout(()=>{if(armedM===id){armedM=null;render()}},3000);return}
     armedM=null;try{await db.doc("fc_matches/"+id).delete();toast("Match supprimé.")}catch(err){toast(errMsg(err))}render()}};
 const ROLE_OF={G:"Gardien",DG:"Défense",DC:"Défense",DD:"Défense",MDC:"Milieu",MG:"Milieu",MC:"Milieu",MD:"Milieu",AG:"Attaque",AT:"Attaque",AD:"Attaque"};
 const ROLES=["Gardien","Défense","Milieu","Attaque"];
 const SK=["pr","pm","dr","dm","tr","tm","b","pd","rec","per","f","arr","enc"];
-let roleMode="match";
+let roleMode="match",roleGroup="role";
+$("role-group").onclick=e=>{const b=e.target.closest("button[data-g]");if(!b)return;roleGroup=b.dataset.g;[...$("role-group").children].forEach(x=>x.setAttribute("aria-selected",x===b));render()};
 $("role-mode").onclick=e=>{const b=e.target.closest("button[data-mode]");if(!b)return;roleMode=b.dataset.mode;
   [...$("role-mode").children].forEach(x=>x.setAttribute("aria-selected",x===b));render()};
 function matchMin(m){return Math.max(60,...(m.rows||[]).map(r=>r.min||0))}
@@ -1048,8 +1077,8 @@ function fundamentals(t,us,them){const L=[];
   return L}
 function statTable(L,nMatch,minutes){return "<tr><th>Stat</th><th>Total</th><th>Par match</th><th>Par minute</th></tr>"+L.map(([l,v,p])=>`<tr><td>${l}</td><td>${p?v:v}</td><td>${p||!nMatch?"—":fmt1(v/nMatch)}</td><td>${p||!minutes?"—":fmt2(v/minutes)}</td></tr>`).join("")}
 function csvCell(v){v=v==null?"":String(v);return /[;"\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}
-function matchRowsCSV(m){return (m.rows||[]).map(r=>[frDate(m.date),m.adv||"",r.name||"",r.pos||"",r.starter?"O":"N",r.min||0,...SK.map(k=>r[k]||0),FORM_LABEL[m.form]||"",(m.us||0)+" à "+(m.them||0)])}
-const CSV_HEAD=["Date","Adversaire","Joueur","Poste","Titulaire (O/N)","Minutes jouées","Passes réussies","Passes ratées","Duels réussis","Duels ratés","Tirs cadrés","Tirs non cadrés","Buts","Passes décisives","Ballons récupérés","Ballons perdus","Fautes","Arrêts (gardien)","Buts encaissés (gardien)","Formation","Score"];
+function matchRowsCSV(m){return (m.rows||[]).map(r=>[frDate(m.date),m.adv||"",r.name||"",r.pos||"",r.starter?"O":"N",r.min||0,...SK.map(k=>r[k]||0),FORM_LABEL[m.form]||"",(m.us||0)+" à "+(m.them||0),posPath(spellsOf(m),r.id)||r.pos||""])}
+const CSV_HEAD=["Date","Adversaire","Joueur","Poste","Titulaire (O/N)","Minutes jouées","Passes réussies","Passes ratées","Duels réussis","Duels ratés","Tirs cadrés","Tirs non cadrés","Buts","Passes décisives","Ballons récupérés","Ballons perdus","Fautes","Arrêts (gardien)","Buts encaissés (gardien)","Formation","Score","Postes joués"];
 function downloadCSV(name,rows,head){const txt="\ufeff"+[head||CSV_HEAD,...rows].map(r=>r.map(csvCell).join(";")).join("\r\n");
   const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([txt],{type:"text/csv;charset=utf-8"}));a.download=name;document.body.appendChild(a);a.click();
   setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1000);toast("Fichier téléchargé ✓")}
@@ -1057,6 +1086,32 @@ function slug(t){return String(t||"").normalize("NFD").replace(/[\u0300-\u036f]/
 $("exp-all").onclick=()=>{const ms=D.matches.slice().sort((a,b)=>(a.date||"").localeCompare(b.date||""));
   if(!ms.length){toast("Aucun match enregistré.");return}
   downloadCSV("FC-St-Leon_tous-les-matchs_"+today()+".csv",ms.flatMap(matchRowsCSV))};
+/* ---------- stats par poste ---------- */
+const ROLE_CODE={Gardien:"G",Défense:"D",Milieu:"M",Attaque:"A"};
+// stints of a saved match; older matches fall back to one stint at the main position
+function spellsOf(m){if(m.spells&&m.spells.length)return m.spells;return (m.rows||[]).filter(r=>r.pos).map(r=>({id:r.id,name:r.name,k:r.pos,h:0,min:r.min||0,st:r,legacy:true}))}
+function sumSpells(list){const t=Object.fromEntries(SK.map(k=>[k,0]));t.min=0;const keys=new Set();list.forEach(s=>{SK.forEach(k=>t[k]+=(s.st&&s.st[k])||0);t.min+=s.min||0;keys.add((s.mid||"")+"|"+s.id)});t.min=Math.round(t.min*10)/10;t.n=keys.size;return t}
+function posPath(sp,id){const l=sp.filter(s=>s.id===id).sort((a,b)=>a.h-b.h||a.m0-b.m0).map(s=>s.k);return l.filter((k,i)=>k!==l[i-1]).join(" → ")}
+function posStatHead(first,withN){return `<tr><th>${first}</th>${withN?"<th>Matchs</th>":""}<th>Min</th><th>Passes</th><th>Duels</th><th>Tirs cadrés</th><th>B</th><th>PD</th><th>Réc/Per</th><th>Fautes</th><th>Arrêts</th><th>Enc.</th></tr>`}
+function posStatRow(label,s,withN,extra){return `<tr><td>${label}</td>${withN?`<td>${s.n}</td>`:""}${extra||""}<td>${fmt1(s.min)}</td><td>${s.pr}/${s.pr+s.pm} <small class="hint">${pct(s.pr,s.pm)}</small></td><td>${s.dr}/${s.dr+s.dm} <small class="hint">${pct(s.dr,s.dm)}</small></td><td>${s.tr}/${s.tr+s.tm}</td><td>${s.b}</td><td>${s.pd}</td><td>${s.rec}/${s.per}</td><td>${s.f}</td><td>${s.arr||""}</td><td>${s.enc||""}</td></tr>`}
+// timeline: each half takes half the width, scaled to its real length
+function timelineHTML(sp,nameOf){const h1=Math.max(30,...sp.filter(s=>s.h===1).map(s=>s.m1)),h2=Math.max(30,...sp.filter(s=>s.h===2).map(s=>s.m1-30));
+  const x=(m,h)=>h===1?Math.min(50,m/h1*50):50+Math.min(50,Math.max(0,m-30)/h2*50);
+  const ids=[...new Set(sp.slice().sort((a,b)=>a.h-b.h||a.m0-b.m0).map(s=>s.id))];
+  const rows=ids.map(id=>`<div class="tl-row"><span class="tl-name" title="${esc(nameOf(id))}">${esc(shortName(nameOf(id)))}</span><div class="tl-track">`+
+    sp.filter(s=>s.id===id).map(s=>{const l=x(s.m0,s.h),w=Math.max(.8,x(s.m1,s.h)-l);return `<span class="tl-seg ${ROLE_CODE[ROLE_OF[s.k]]||"M"}" style="left:${l.toFixed(2)}%;width:${w.toFixed(2)}%" title="${esc(SL[s.k]||s.k)} · ${s.m0}′–${s.m1}′">${w>=7?s.k:""}</span>`}).join("")+`</div></div>`).join("");
+  return `<div class="tl">${rows}<div class="tl-axis"><span></span><div><span>0′</span><span>1re MT</span><span>30′</span><span>2e MT</span><span>${30+Math.round(h2)}′</span></div></div></div>`+
+    `<div class="tl-legend">${ROLES.map(r=>`<span><i style="background:var(--r-${ROLE_CODE[r].toLowerCase()})"></i>${r}</span>`).join("")}</div>`}
+function posTableHTML(sp,nameOf){const l=sp.slice().sort((a,b)=>nameOf(a.id).localeCompare(nameOf(b.id),"fr")||a.h-b.h||a.m0-b.m0);
+  return `<div class="tablewrap"><table><tr><th>Joueur</th><th>MT</th><th>Poste</th><th>De–à</th><th>Min</th><th>Passes</th><th>Duels</th><th>Tirs cadrés</th><th>B</th><th>PD</th><th>Réc/Per</th><th>Fautes</th><th>Arrêts</th><th>Enc.</th></tr>`+
+    l.map(s=>{const t=sumSpells([s]);return posStatRow(esc(shortName(nameOf(s.id))),t,false,`<td>${s.h===2?"2e":"1re"}</td><td>${esc(s.k)}</td><td class="num">${s.m0}′–${s.m1}′</td>`).replace(/^<tr><td>([^<]*)<\/td><td>/,"<tr><td>$1</td><td>")}).join("")+`</table></div>`}
+function posBlock(sp,nameOf){if(!sp||!sp.length)return'<p class="hint" style="margin:0">Le détail par poste se remplit dès le coup d\'envoi : chaque passage à un poste, chaque changement et chaque mi-temps sont notés.</p>';
+  return timelineHTML(sp,nameOf)+`<details class="possec"><summary><b>Stats par poste et par mi-temps</b> <span class="hint">(${sp.length} lignes)</span></summary>${posTableHTML(sp,nameOf)}</details>`}
+function posRowsCSV(m){return spellsOf(m).slice().sort((a,b)=>(a.name||"").localeCompare(b.name||"","fr")||a.h-b.h||(a.m0||0)-(b.m0||0)).map(s=>[frDate(m.date),m.adv||"",s.name||rowName(m,s.id),s.legacy?"Match entier":s.h===2?"2e MT":"1re MT",s.k,ROLE_OF[s.k]||"",s.legacy?"":s.m0,s.legacy?"":s.m1,s.min||0,...SK.map(k=>(s.st&&s.st[k])||0)])}
+const POS_HEAD=["Date","Adversaire","Joueur","Mi-temps","Poste","Rôle","De (min)","À (min)","Minutes jouées",...CSV_HEAD.slice(6,19)];
+$("exp-pos").onclick=()=>{const ms=D.matches.slice().sort((a,b)=>(a.date||"").localeCompare(b.date||""));
+  if(!ms.length){toast("Aucun match enregistré.");return}
+  downloadCSV("FC-St-Leon_detail-par-poste_"+today()+".csv",ms.flatMap(posRowsCSV),POS_HEAD)};
 function renderStats(ms){
   const allRows=ms.flatMap(m=>m.rows||[]);const t=sumRows(allRows);
   const minutes=ms.reduce((a,m)=>a+matchMin(m),0);
@@ -1064,13 +1119,14 @@ function renderStats(ms){
   $("team-sub").textContent=ms.length?`Sur ${ms.length} match${ms.length>1?"s":""}, soit ${minutes} minutes de jeu.`:"Pas encore de match enregistré.";
   $("team-t").innerHTML=ms.length?statTable(fundamentals(t,us,them).concat([["Arrêts (gardien)",t.arr]]),ms.length,minutes):"";
   // roles
-  const by={};ROLES.forEach(r=>by[r]=[]);allRows.forEach(r=>{const ro=ROLE_OF[r.pos];if(ro)by[ro].push(r)});
+  const allSp=ms.flatMap(m=>spellsOf(m).map(s=>Object.assign({mid:m.id},s)));
+  const groups=roleGroup==="pos"?ALLPOS.map(k=>[k+" · "+SL[k],s=>s.k===k]):ROLES.map(r=>[r,s=>ROLE_OF[s.k]===r]);
   const cols=[["Passes réussies","pr"],["% passes",null,"pr","pm"],["Duels gagnés","dr"],["% duels",null,"dr","dm"],["Tirs cadrés","tr"],["Tirs","T"],["Buts","b"],["Passes déc.","pd"],["Récup.","rec"],["Pertes","per"],["Fautes","f"],["Arrêts","arr"]];
-  const line=(label,rows)=>{const s=sumRows(rows);const div=roleMode==="min"?s.min:s.n;
+  const line=(label,list)=>{const s=sumSpells(list);if(!s.n&&label.indexOf("<b>")<0)return"";const div=roleMode==="min"?s.min:s.n;
     const cell=c=>{if(!c[1]&&c[2])return pct(s[c[2]],s[c[3]]);const v=c[1]==="T"?s.tr+s.tm:s[c[1]];return div?(roleMode==="min"?fmt2(v/div):fmt1(v/div)):"—"};
     return `<tr><td>${label}</td><td>${s.n}</td><td>${s.n?fmt1(s.min/s.n):"—"}</td>${cols.map(c=>`<td>${cell(c)}</td>`).join("")}</tr>`};
-  $("role-sub").textContent=roleMode==="min"?"Moyenne par minute jouée, pour un joueur à ce poste.":"Moyenne par joueur et par match, selon le poste principal joué.";
-  $("role-t").innerHTML=allRows.length?`<tr><th>Rôle</th><th>Appar.</th><th>Min moy.</th>${cols.map(c=>`<th>${c[0]}</th>`).join("")}</tr>`+ROLES.map(r=>line(r,by[r])).join("")+line("<b>Équipe</b>",allRows):'<tr><td>Pas encore de donnée.</td></tr>';
+  $("role-sub").textContent=(roleMode==="min"?"Moyenne par minute jouée à ce "+(roleGroup==="pos"?"poste":"rôle")+".":"Moyenne par joueur et par match passé à ce "+(roleGroup==="pos"?"poste":"rôle")+" (sur le temps réellement joué à ce poste).")+" Un joueur qui change de poste compte pour chaque poste, au prorata de son temps.";
+  $("role-t").innerHTML=allSp.length?`<tr><th>${roleGroup==="pos"?"Poste":"Rôle"}</th><th>Appar.</th><th>Min moy.</th>${cols.map(c=>`<th>${c[0]}</th>`).join("")}</tr>`+groups.map(([l,fn])=>line(l,allSp.filter(fn))).join("")+line("<b>Équipe</b>",allSp):'<tr><td>Pas encore de donnée.</td></tr>';
   // my stats
   const mine=myId?ms.flatMap(m=>(m.rows||[]).filter(r=>r.id===myId)):[];
   $("me-stats").hidden=!mine.length;
@@ -1078,6 +1134,11 @@ function renderStats(ms){
     $("me-stats-sub").textContent=`${mine.length} match${mine.length>1?"s":""} joué${mine.length>1?"s":""}, ${s.min} minutes.`;
     const L=fundamentals(s,null,null);if(s.arr||s.enc)L.push(["Arrêts (gardien)",s.arr],["Buts encaissés (gardien)",s.enc]);
     $("me-stats-t").innerHTML=statTable(L,mine.length,s.min)}
+  const mySp=myId?ms.flatMap(m=>spellsOf(m).filter(x=>x.id===myId).map(x=>Object.assign({mid:m.id},x))):[];
+  $("me-pos").hidden=!mySp.length;
+  if(mySp.length){const ks=ALLPOS.filter(k=>mySp.some(x=>x.k===k));
+    $("me-pos-sub").textContent="Tes stats selon le poste occupé au moment de l'action."+(mySp.some(x=>x.legacy)?" Pour les matchs enregistrés avant le suivi par poste, tout est compté à ton poste principal.":"");
+    $("me-pos-t").innerHTML=posStatHead("Poste",true)+ks.map(k=>posStatRow(k+" · "+SL[k],sumSpells(mySp.filter(x=>x.k===k)),true)).join("")}
 }
 /* ---------- homme du match ---------- */
 const VOTE_MS=7*24*3600*1000;
@@ -1126,10 +1187,10 @@ function renderResultats(){
   $("mlist").innerHTML=ms.length?'<ul class="mlist">'+ms.map(m=>{const r=resOf(m);
     let h=`<li><button class="mrow" data-open="${esc(m.id)}" aria-expanded="${openMatch===m.id}"><span class="res ${r}">${r}</span><span class="t"><b>${esc(m.adv||"Adversaire")}</b><span>${esc(cap(shortDate(m.date||today())))}${m.form?" · "+(FORM_LABEL[m.form]||""):""}</span></span><span class="sc num">${m.us}–${m.them}</span></button>${!voteOpen(m)&&motmText(m)?`<p class="motm-line">Homme du match : <b>${esc(motmText(m))}</b></p>`:voteOpen(m)?`<p class="motm-line hint">Vote homme du match en cours (${daysLeft(m)})</p>`:""}`;
     if(openMatch===m.id){const rows=(m.rows||[]).slice().sort((a,b)=>(b.min||0)-(a.min||0));
-      h+=`<div class="mdetail"><div class="tablewrap"><table><tr><th>Joueur</th><th>Poste</th><th>Min</th><th>Passes</th><th>Duels</th><th>Tirs</th><th>B</th><th>PD</th><th>Réc/Per</th><th>Fautes</th><th>Arrêts</th><th>Enc.</th></tr>`+
-      rows.map(s=>`<tr><td>${esc(s.name)}${s.starter?"":" (R)"}</td><td>${esc(s.pos||"")}</td><td>${s.min||0}</td><td>${s.pr||0}/${(s.pr||0)+(s.pm||0)}</td><td>${s.dr||0}/${(s.dr||0)+(s.dm||0)}</td><td>${s.tr||0}/${(s.tr||0)+(s.tm||0)}</td><td>${s.b||0}</td><td>${s.pd||0}</td><td>${s.rec||0}/${s.per||0}</td><td>${s.f||0}</td><td>${s.arr||""}</td><td>${s.enc||""}</td></tr>`).join("")+`</table></div>`+
-      voteBox(m)+`<details class="histcard"><summary>Historique du match${m.hist&&m.hist.length?" ("+m.hist.length+")":""}</summary>${histHTML(m.hist)}</details>`+
-      `<button class="mini" data-expm="${esc(m.id)}">Exporter les stats du match (Excel)</button> `+(m.hist&&m.hist.length?`<button class="mini" data-exph="${esc(m.id)}">Exporter l'historique (Excel)</button> `:"")+(isCoach?`<button class="mini ${armedM===m.id?"warn":""}" data-delm="${esc(m.id)}">${armedM===m.id?"Confirmer ?":"Supprimer ce match"}</button>`:"")+`</div>`}
+      h+=`<div class="mdetail"><div class="tablewrap"><table><tr><th>Joueur</th><th>Poste(s)</th><th>Min</th><th>Passes</th><th>Duels</th><th>Tirs</th><th>B</th><th>PD</th><th>Réc/Per</th><th>Fautes</th><th>Arrêts</th><th>Enc.</th></tr>`+
+      rows.map(s=>`<tr><td>${esc(s.name)}${s.starter?"":" (R)"}</td><td>${esc(m.spells&&m.spells.length?posPath(m.spells,s.id):s.pos||"")}</td><td>${s.min||0}</td><td>${s.pr||0}/${(s.pr||0)+(s.pm||0)}</td><td>${s.dr||0}/${(s.dr||0)+(s.dm||0)}</td><td>${s.tr||0}/${(s.tr||0)+(s.tm||0)}</td><td>${s.b||0}</td><td>${s.pd||0}</td><td>${s.rec||0}/${s.per||0}</td><td>${s.f||0}</td><td>${s.arr||""}</td><td>${s.enc||""}</td></tr>`).join("")+`</table></div>`+
+      `<div class="possec"><h3>Qui a joué où</h3>${m.spells&&m.spells.length?posBlock(m.spells,id=>rowName(m,id)):'<p class="hint" style="margin:0">Match enregistré avant le suivi par poste : seul le poste principal est connu.</p>'}</div>`+voteBox(m)+`<details class="histcard"><summary>Historique du match${m.hist&&m.hist.length?" ("+m.hist.length+")":""}</summary>${histHTML(m.hist)}</details>`+
+      `<button class="mini" data-expm="${esc(m.id)}">Exporter les stats du match (Excel)</button> `+(m.spells&&m.spells.length?`<button class="mini" data-expp="${esc(m.id)}">Exporter le détail par poste (Excel)</button> `:"")+(m.hist&&m.hist.length?`<button class="mini" data-exph="${esc(m.id)}">Exporter l'historique (Excel)</button> `:"")+(isCoach?`<button class="mini ${armedM===m.id?"warn":""}" data-delm="${esc(m.id)}">${armedM===m.id?"Confirmer ?":"Supprimer ce match"}</button>`:"")+`</div>`}
     return h+"</li>"}).join("")+"</ul>":'<div class="empty">Aucun match enregistré. Après un match, onglet Match → Export → « Enregistrer dans les résultats ».</div>';
 }
 
