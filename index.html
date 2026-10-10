@@ -1233,7 +1233,7 @@ function renderResultats(){
   let v=0,n=0,d=0,bp=0,bc=0;ms.forEach(m=>{const r=resOf(m);r==="V"?v++:r==="N"?n++:d++;bp+=m.us||0;bc+=m.them||0});
   $("tiles").innerHTML=`<div class="tile"><span>Matchs</span><b class="num">${ms.length}</b></div><div class="tile"><span>V · N · D</span><b class="num">${v}<i> · </i>${n}<i> · </i>${d}</b></div><div class="tile"><span>Buts pour</span><b class="num">${bp}</b></div><div class="tile"><span>Buts contre</span><b class="num">${bc}</b></div>`;
   const agg={};ms.forEach(m=>(m.rows||[]).forEach(r=>{const a=agg[r.id]=agg[r.id]||{name:r.name,b:0,pd:0};a.b+=r.b||0;if(!isLite(m))a.pd+=r.pd||0;const p=playerById(r.id);if(p)a.name=full(p)}));
-  const lead=k=>{const l=Object.values(agg).filter(a=>a[k]>0).sort((x,y)=>y[k]-x[k]).slice(0,5);
+  const lead=k=>{const l=Object.values(agg).filter(a=>a[k]>0).sort((x,y)=>y[k]-x[k]||x.name.localeCompare(y.name,"fr"));
     return l.length?"<ol>"+l.map(a=>`<li><span>${esc(a.name)}</span><b>${a[k]}</b></li>`).join("")+"</ol>":'<p class="hint" style="margin:0">Pas encore de donnée.</p>'};
   $("lead-b").innerHTML=lead("b");$("lead-pd").innerHTML=lead("pd");
   closeVotes();
