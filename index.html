@@ -196,6 +196,9 @@ label.sub{font-weight:500;font-size:12px}
 .chip span{font-size:12px;color:var(--muted)}
 .chip.placed{border-color:var(--pitch);background:var(--pitch-soft)}
 .chip .pos{position:absolute;top:6px;right:6px;font-family:var(--display);font-weight:700;font-style:normal;font-size:13px;color:var(--pitch)}
+.chip.benchsel{border-color:var(--gold);background:var(--gold-bg)}
+.chip.benchsel .pos{color:var(--gold)}
+.chip.notsel{opacity:.6}
 .chip.bench{border-style:dashed}
 
 .bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
@@ -395,7 +398,9 @@ ol.steps{margin:0 0 14px;padding-left:20px} ol.steps li{margin-bottom:4px}
       <div class="section-label"><span>Formation</span><span class="num" id="startcount">0 / 7</span></div>
       <div class="formband" id="formband" role="radiogroup" aria-label="Formation"></div>
       <div id="setuppitch"></div>
+      <div class="subtabs" id="pickmode" role="tablist" aria-label="Sélection"><button data-pm="pitch" aria-selected="true">Titulaires (terrain)</button><button data-pm="bench">Remplaçants (banc)</button></div>
       <p class="hint" id="setuphint"></p>
+      <div class="section-label"><span>Joueurs</span><span class="num" id="squadcount"></span></div>
       <div class="grid" id="rostergrid"></div>
       <div class="stack" style="margin-bottom:14px">
         <button class="btn" id="go">Passer au match</button>
@@ -418,6 +423,7 @@ ol.steps{margin:0 0 14px;padding-left:20px} ol.steps li{margin-bottom:4px}
       <div id="matchpitch"></div>
       <div class="section-label"><span>Banc</span><span id="benchcount"></span></div>
       <div class="grid" id="benchgrid"></div>
+      <div class="inline" id="lateadd" hidden><select id="latesel" aria-label="Ajouter un joueur au banc"></select><button class="btn sm ghost" id="lateok">Ajouter au banc</button></div>
     </section>
 
     <section id="m-export" hidden>
@@ -778,9 +784,9 @@ function renderCalendrier(){
    ===================================================== */
 function newP(){return{starter:false,cur:null,since:null,ms:{},st:Object.fromEntries(ALL.map(x=>[x.k,0]))}}
 function blank(){return{mid:"m-"+rid(),date:today(),adv:"",sub:"setup",half:1,acc:[0,0],runAt:null,started:false,ended:false,log:[],
-  form:"231",slots:Object.fromEntries(ALLPOS.map(k=>[k,null])),p:{},names:{},saved:false}}
+  form:"231",slots:Object.fromEntries(ALLPOS.map(k=>[k,null])),bench:[],p:{},names:{},saved:false}}
 let S=ls(MK,null);if(!S||!S.slots||!S.p||!S.acc)S=blank();
-if(!FORMS[S.form])S.form="231";ALLPOS.forEach(k=>{if(!(k in S.slots))S.slots[k]=null});
+if(!FORMS[S.form])S.form="231";if(!Array.isArray(S.bench))S.bench=[];ALLPOS.forEach(k=>{if(!(k in S.slots))S.slots[k]=null});
 let sel=null,subMode=false,pick=null,activeSlot=null,armed=false,buzzed=0,setupMsg="";
 function save(){lss(MK,S)}
 function P(id){if(!S.p[id])S.p[id]=newP();return S.p[id]}
@@ -796,7 +802,7 @@ function pauseClock(){if(S.runAt){S.acc[S.half-1]+=Date.now()-S.runAt;S.runAt=nu
 function leave(id){const p=P(id);if(!p.cur)return;p.ms[p.cur]=(p.ms[p.cur]||0)+mt()-p.since;S.slots[p.cur]=null;p.cur=null;p.since=null}
 function enter(id,k){const p=P(id);p.cur=k;p.since=mt();S.slots[k]=id;nm(id)}
 function assign(id,k){const p=P(id),prev=p.cur,occ=S.slots[k];if(occ===id)return;
-  if(prev){leave(id);if(occ!=null){leave(occ);enter(occ,prev)}}else if(occ!=null)leave(occ);
+  if(prev){leave(id);if(occ!=null){leave(occ);enter(occ,prev)}}else if(occ!=null){leave(occ);if(S.sub==="live")toBench(occ,true)}
   enter(id,k)}
 function goalie(){return S.slots.G}
 function score(){let a=0,b=0;for(const id in S.p){a+=S.p[id].st.b;b+=S.p[id].st.enc}return[a,b]}
@@ -838,7 +844,16 @@ $("formband").innerHTML=FORM_ORDER.map(f=>[f,FORM_DEF[f]]).map(([f,d])=>`<button
 $("formband").onclick=e=>{const b=e.target.closest("[data-form]");if(b)setForm(b.dataset.form)};
 function nextEmpty(){return order().find(k=>S.slots[k]==null)||null}
 $("setuppitch").onclick=e=>{const b=e.target.closest(".slot");if(!b||S.started)return;const k=b.dataset.s;activeSlot=activeSlot===k?null:k;setupMsg="";render()};
-$("rostergrid").onclick=e=>{const c=e.target.closest(".chip");if(!c||S.started)return;const id=c.dataset.id,p=P(id);setupMsg="";
+let pickMode="pitch";
+$("pickmode").onclick=e=>{const b=e.target.closest("button[data-pm]");if(!b)return;pickMode=b.dataset.pm;activeSlot=null;setupMsg="";
+  [...$("pickmode").children].forEach(x=>x.setAttribute("aria-selected",x===b));render()};
+function onBench(id){return S.bench.includes(id)}
+function toBench(id,on){S.bench=S.bench.filter(x=>x!==id);if(on){S.bench.push(id);S.squadPicked=true}}
+// everyone selected for the match: starters, bench, and anyone who already played
+function squadIds(){const set=new Set(S.bench);for(const id in S.p){const p=S.p[id];if(p.cur||p.starter||playedMs(p)>0||Object.values(p.st).some(v=>v>0))set.add(id)}return [...set]}
+$("rostergrid").onclick=e=>{const c=e.target.closest(".chip");if(!c)return;const id=c.dataset.id,p=P(id);setupMsg="";
+  if(pickMode==="bench"){if(p.cur){if(S.started){setupMsg="Pendant le match, fais sortir le joueur avec « Changement ».";render();return}leave(id);toBench(id,true)}else toBench(id,!onBench(id));save();render();return}
+  if(S.started)return;toBench(id,false);
   if(activeSlot){if(S.slots[activeSlot]===id)leave(id);else{assign(id,activeSlot);activeSlot=nextEmpty()}}
   else if(p.cur)leave(id);
   else{const k=nextEmpty();if(!k){setupMsg="Terrain complet : touche d'abord un poste pour le remplacer.";render();return}assign(id,k)}
@@ -847,11 +862,11 @@ $("savecompo").onclick=async()=>{if(!db||!isCoach)return;const name=$("f-compo")
   const slots={};order().forEach(k=>{if(S.slots[k]!=null)slots[k]=S.slots[k]});
   if(!Object.keys(slots).length){setupMsg="Place des joueurs sur le terrain avant d'enregistrer.";render();return}
   const ex=D.compos.find(c=>c.name===name);
-  try{await db.doc("fc_compos/"+(ex?ex.id:"c-"+rid())).set({name,form:S.form,slots,at:new Date().toISOString()});$("f-compo").value="";toast("Compo « "+name+" » enregistrée ✓")}catch(err){toast(errMsg(err))}};
+  try{await db.doc("fc_compos/"+(ex?ex.id:"c-"+rid())).set({name,form:S.form,slots,bench:S.bench.slice(),at:new Date().toISOString()});$("f-compo").value="";toast("Compo « "+name+" » enregistrée ✓")}catch(err){toast(errMsg(err))}};
 $("compolist").onclick=async e=>{const b=e.target.closest("button");if(!b)return;const c=D.compos.find(x=>x.id===b.dataset.id);if(!c)return;
   if(b.dataset.act==="del"){try{await db.doc("fc_compos/"+c.id).delete()}catch(err){toast(errMsg(err))}return}
   if(S.started)return;ALLPOS.forEach(k=>{if(S.slots[k]!=null)leave(S.slots[k])});S.form=FORMS[c.form]?c.form:"231";
-  let miss=0;order().forEach(k=>{const id=c.slots&&c.slots[k];if(id&&playerById(id)&&!P(id).cur)enter(id,k);else if(id)miss++});
+  let miss=0;order().forEach(k=>{const id=c.slots&&c.slots[k];if(id&&playerById(id)&&!P(id).cur)enter(id,k);else if(id)miss++});S.bench=(c.bench||[]).filter(id=>playerById(id)&&!(S.p[id]&&S.p[id].cur));if(S.bench.length)S.squadPicked=true;
   activeSlot=null;setupMsg="Compo « "+c.name+" » chargée."+(miss?" "+miss+" joueur(s) ne sont plus inscrits.":"");save();render()};
 
 $("formlive").innerHTML=FORM_ORDER.map(f=>[f,FORM_DEF[f]]).map(([f,d])=>`<option value="${f}">${d.label}</option>`).join("");
@@ -863,6 +878,7 @@ $("matchpitch").onclick=e=>{const b=e.target.closest(".slot");if(!b)return;const
   if(subMode){if(pick==null)pick=k;else if(pick===k)pick=null;else{const a=S.slots[pick];if(a!=null)assign(a,k);else if(id!=null)assign(id,pick);pick=null;save()}}
   else{if(id==null)return;sel=sel===id?null:id}
   render()};
+$("lateok").onclick=()=>{const v=$("latesel").value;if(!v)return;toBench(v,true);save();toast(shortName(nm(v))+" ajouté au banc ✓");render()};
 $("benchgrid").onclick=e=>{const c=e.target.closest(".chip");if(!c)return;const j=c.dataset.id;
   if(!subMode){subMode=true;pick=null}
   if(pick==null){render();$("subhint").textContent="Touche d'abord le poste sur le terrain, puis le remplaçant.";return}
@@ -917,7 +933,11 @@ function renderMatch(){
     $("setuppitch").innerHTML=pitchHTML("setup");
     const roster=sortPlayers(D.players);
     $("setuphint").textContent=setupMsg||(activeSlot?"Choisis le joueur pour : "+SL[activeSlot]+".":"Touche un poste puis un joueur. Ou touche directement les joueurs : ils remplissent les postes dans l'ordre (gardien, défense, milieu, attaque).");
-    $("rostergrid").innerHTML=roster.length?roster.map(pl=>{const p=S.p[pl.id],cur=p&&p.cur;return `<button class="chip ${cur?"placed":""}" data-id="${esc(pl.id)}" id="r-${esc(pl.id)}"><b>${esc(shortName(full(pl)))}</b><span>${cur?SL[cur]:"Banc"}</span>${cur?`<i class="pos">${cur}</i>`:""}</button>`}).join(""):
+    if(pickMode==="bench"&&!setupMsg)$("setuphint").textContent="Touche les joueurs convoqués comme remplaçants. Retouche-les pour les retirer. Seuls les titulaires et les remplaçants apparaîtront pendant le match.";
+    const nb=S.bench.filter(id=>!(S.p[id]&&S.p[id].cur)).length;
+    $("squadcount").textContent=placed+" titulaire"+(placed>1?"s":"")+" · "+nb+" remplaçant"+(nb>1?"s":"");
+    $("rostergrid").innerHTML=roster.length?roster.map(pl=>{const p=S.p[pl.id],cur=p&&p.cur,bn=!cur&&onBench(pl.id);
+      return `<button class="chip ${cur?"placed":bn?"benchsel":"notsel"}" data-id="${esc(pl.id)}" id="r-${esc(pl.id)}" aria-pressed="${!!(cur||bn)}"><b>${esc(shortName(full(pl)))}</b><span>${cur?SL[cur]:bn?"Remplaçant":"Non convoqué"}</span>${cur?`<i class="pos">${cur}</i>`:bn?'<i class="pos">R</i>':""}</button>`}).join(""):
       `<div class="empty" style="grid-column:1/-1">${dbState==="on"?"Aucun joueur inscrit. Les joueurs s'inscrivent dans l'onglet Effectif.":"Effectif indisponible pour le moment."}</div>`;
     $("clearpitch").disabled=S.started;
     $("compo-save").hidden=!isCoach;
@@ -926,7 +946,11 @@ function renderMatch(){
   if(S.sub==="live"){
     if(sel!=null&&!(S.p[sel]&&S.p[sel].cur))sel=null;
     $("matchpitch").innerHTML=pitchHTML("live");
-    const bench=rosterIds().filter(id=>!(S.p[id]&&S.p[id].cur));
+    const selected=!!S.squadPicked||S.bench.length>0;
+    const bench=(selected?squadIds():rosterIds()).filter(id=>!(S.p[id]&&S.p[id].cur)).sort((a,b)=>nm(a).localeCompare(nm(b),"fr"));
+    const others=sortPlayers(D.players).filter(p=>!bench.includes(p.id)&&!(S.p[p.id]&&S.p[p.id].cur));
+    $("lateadd").hidden=!selected||!others.length;
+    if(selected)$("latesel").innerHTML='<option value="">Un joueur arrivé en retard ?</option>'+others.map(p=>`<option value="${esc(p.id)}">${esc(full(p))}</option>`).join("");
     $("benchcount").textContent=bench.length+" joueur"+(bench.length>1?"s":"");
     $("benchgrid").innerHTML=bench.map(id=>{const p=P(id);return `<button class="chip bench" data-id="${esc(id)}" id="b-${esc(id)}"><b>${esc(shortName(nm(id)))}</b><span class="num">${mins(p)}′ joué${p.st.b?" · "+p.st.b+" but":""}</span></button>`}).join("");
     $("subbtn").classList.toggle("on",subMode);$("subbtn").textContent=subMode?"Terminé":"Changement";
