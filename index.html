@@ -114,6 +114,13 @@ input[type=text],input[type=date],input[type=time],input[type=number],select{wid
 .ticket.st-done .tk-title{text-decoration:line-through}
 .tk-body{margin:0 0 6px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px}
 textarea.notearea{min-height:80px;font:inherit;white-space:pre-wrap}
+.votebox{background:var(--gold-bg);border-radius:10px;padding:10px 12px;margin:0 0 10px}
+.vb-top{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:baseline}
+.votegrid{display:flex;flex-wrap:wrap;gap:6px}
+.votegrid .mini{background:var(--surface)}
+.motm-line{margin:-4px 0 6px 12px;font-size:13px}
+.leaders{grid-template-columns:repeat(3,1fr)}
+@media (max-width:640px){.leaders{grid-template-columns:1fr}}
 .posgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:2px 0 12px}
 @media (max-width:420px){.posgrid{grid-template-columns:1fr}}
 label.sub{font-weight:500;font-size:12px}
@@ -452,6 +459,7 @@ ol.steps{margin:0 0 14px;padding-left:20px} ol.steps li{margin-bottom:4px}
   <!-- RESULTATS -->
   <main id="v-resultats" hidden>
     <div class="tiles" id="tiles"></div>
+    <div id="votes-open"></div>
     <div class="btnrow" style="margin-bottom:14px"><button class="btn sm" id="exp-all">Exporter tous les matchs (Excel)</button></div>
     <div class="card" id="me-stats" hidden>
       <h2>Mes stats <span class="tag">visible seulement par toi</span></h2>
@@ -472,6 +480,7 @@ ol.steps{margin:0 0 14px;padding-left:20px} ol.steps li{margin-bottom:4px}
     <div class="leaders">
       <div class="card" style="margin:0"><h2>Buteurs</h2><div id="lead-b"></div></div>
       <div class="card" style="margin:0"><h2>Passeurs</h2><div id="lead-pd"></div></div>
+      <div class="card" style="margin:0"><h2>Hommes du match</h2><div id="lead-motm"></div></div>
     </div>
     <div class="section-label"><span>Matchs</span></div>
     <div id="mlist"></div>
@@ -905,7 +914,7 @@ $("savematch").onclick=async()=>{if(!db||!isCoach)return;
   const[us,them]=score();
   const rows=rowIds().map(id=>{const p=S.p[id];return Object.assign({id,name:nm(id),pos:mainPos(p),starter:isStarter(p),min:mins(p)},p.st)});
   $("savematch").disabled=true;
-  try{await db.doc("fc_matches/"+S.mid).set({date:S.date,adv:S.adv.trim(),form:S.form,us,them,rows,at:new Date().toISOString()});S.saved=true;save();toast("Match enregistré dans les résultats ✓")}
+  try{await db.doc("fc_matches/"+S.mid).set(Object.assign({date:S.date,adv:S.adv.trim(),form:S.form,us,them,rows},(D.matches.find(x=>x.id===S.mid)||{}).at?{}:{at:new Date().toISOString()}),{merge:true});S.saved=true;save();toast("Match enregistré ✓ Le vote pour l'homme du match est ouvert 7 jours dans Résultats.")}
   catch(err){toast(errMsg(err))}
   $("savematch").disabled=false;render()};
 $("reset").onclick=()=>{$("confirm").hidden=false};
@@ -983,6 +992,7 @@ function renderMatch(){
    ===================================================== */
 let openMatch=null,armedM=null;
 $("mlist").onclick=async e=>{const b=e.target.closest("button");if(!b)return;
+  if(b.dataset.vote){castVote(b.dataset.vote,b.dataset.cand);return}
   if(b.dataset.open){openMatch=openMatch===b.dataset.open?null:b.dataset.open;render();return}
   if(b.dataset.expm){const m=D.matches.find(x=>x.id===b.dataset.expm);if(m)downloadCSV("FC-St-Leon_"+(m.date||"")+"_"+slug(m.adv)+".csv",matchRowsCSV(m));return}
   if(b.dataset.delm){const id=b.dataset.delm;if(armedM!==id){armedM=id;render();setTimeout(()=>{if(armedM===id){armedM=null;render()}},3000);return}
@@ -1040,6 +1050,33 @@ function renderStats(ms){
     const L=fundamentals(s,null,null);if(s.arr||s.enc)L.push(["Arrêts (gardien)",s.arr],["Buts encaissés (gardien)",s.enc]);
     $("me-stats-t").innerHTML=statTable(L,mine.length,s.min)}
 }
+/* ---------- homme du match ---------- */
+const VOTE_MS=7*24*3600*1000;
+function voteEnd(m){const t=m.at?Date.parse(m.at):(m.date?parseYmd(m.date).getTime()+20*3600*1000:0);return t+VOTE_MS}
+function voteOpen(m){return Date.now()<voteEnd(m)}
+function tally(m){const c={};Object.values(m.votes||{}).forEach(id=>{c[id]=(c[id]||0)+1});return c}
+function winners(m){const c=tally(m);const max=Math.max(0,...Object.values(c));return max?Object.keys(c).filter(id=>c[id]===max):[]}
+function rowName(m,id){const p=playerById(id);if(p)return full(p);const r=(m.rows||[]).find(x=>x.id===id);return r?r.name:"Joueur retiré"}
+function motmText(m){const w=m.motm&&m.motm.ids||winners(m);return w.length?w.map(id=>rowName(m,id)).join(" et "):""}
+function daysLeft(m){const d=Math.ceil((voteEnd(m)-Date.now())/86400000);return d<=1?"dernier jour":"encore "+d+" jours"}
+async function castVote(mid,cid){const m=D.matches.find(x=>x.id===mid);if(!m||!myId)return;
+  if(!voteOpen(m)){toast("Le vote est terminé.");return}
+  if(m.votes&&m.votes[myId]){toast("Tu as déjà voté pour ce match.");return}
+  if(cid===myId){toast("Tu ne peux pas voter pour toi.");return}
+  try{await db.doc("fc_matches/"+mid).set({votes:{[myId]:cid}},{merge:true});toast("Vote enregistré pour "+shortName(rowName(m,cid))+" ✓")}catch(err){toast(errMsg(err))}}
+// once the week is over, the first device that sees the match records the winner
+const motmSaving=new Set();
+function closeVotes(){D.matches.forEach(m=>{if(voteOpen(m)||(m.motm&&m.motm.closed)||motmSaving.has(m.id)||!db)return;motmSaving.add(m.id);
+  const w=winners(m),c=tally(m);db.doc("fc_matches/"+m.id).set({motm:{ids:w,votes:w.length?c[w[0]]:0,total:Object.keys(m.votes||{}).length,closed:true,at:new Date().toISOString()}},{merge:true}).catch(()=>motmSaving.delete(m.id))})}
+function voteBox(m){const nVotes=Object.keys(m.votes||{}).length;
+  if(!voteOpen(m)){const t=motmText(m);return `<div class="votebox"><b>Homme du match :</b> ${t?esc(t):"pas de vote"}${m.motm&&m.motm.votes?` <span class="hint">(${m.motm.votes} voix sur ${m.motm.total})</span>`:""}</div>`}
+  const mine=myId&&m.votes&&m.votes[myId];
+  let h=`<div class="votebox"><div class="vb-top"><b>Vote pour l'homme du match</b><span class="hint num">${nVotes} vote${nVotes>1?"s":""} · ${daysLeft(m)}</span></div>`;
+  if(!myId)return h+`<p class="hint" style="margin:6px 0 0">Inscris-toi ou choisis ton nom dans Effectif pour voter.</p></div>`;
+  if(mine)return h+`<p style="margin:6px 0 0">Ton vote : <b>${esc(rowName(m,mine))}</b>. Le résultat sera affiché à la fin du vote.</p></div>`;
+  const cands=(m.rows||[]).filter(r=>r.id!==myId).sort((a,b)=>rowName(m,a.id).localeCompare(rowName(m,b.id),"fr"));
+  return h+`<p class="hint" style="margin:6px 0 8px">Un seul vote par profil, et pas pour toi-même. Touche un joueur :</p><div class="votegrid">${cands.map(r=>`<button class="mini" data-vote="${esc(m.id)}" data-cand="${esc(r.id)}">${esc(shortName(rowName(m,r.id)))}</button>`).join("")}</div></div>`}
+$("votes-open").onclick=e=>{const b=e.target.closest("button[data-vote]");if(b)castVote(b.dataset.vote,b.dataset.cand)};
 function resOf(m){return m.us>m.them?"V":m.us===m.them?"N":"D"}
 function renderResultats(){
   const ms=D.matches.slice().sort((a,b)=>(b.date||"").localeCompare(a.date||""));
@@ -1050,13 +1087,19 @@ function renderResultats(){
   const lead=k=>{const l=Object.values(agg).filter(a=>a[k]>0).sort((x,y)=>y[k]-x[k]).slice(0,5);
     return l.length?"<ol>"+l.map(a=>`<li><span>${esc(a.name)}</span><b>${a[k]}</b></li>`).join("")+"</ol>":'<p class="hint" style="margin:0">Pas encore de donnée.</p>'};
   $("lead-b").innerHTML=lead("b");$("lead-pd").innerHTML=lead("pd");
+  closeVotes();
+  const mc={};ms.filter(m=>!voteOpen(m)).forEach(m=>(m.motm&&m.motm.ids||winners(m)).forEach(id=>{const k=id;mc[k]=mc[k]||{name:rowName(m,id),n:0};mc[k].n++}));
+  const ml=Object.values(mc).sort((a,b)=>b.n-a.n).slice(0,5);
+  $("lead-motm").innerHTML=ml.length?"<ol>"+ml.map(a=>`<li><span>${esc(a.name)}</span><b>${a.n}</b></li>`).join("")+"</ol>":'<p class="hint" style="margin:0">Pas encore de vote terminé.</p>';
+  const open=ms.filter(m=>voteOpen(m)&&(m.rows||[]).length);
+  $("votes-open").innerHTML=open.map(m=>`<div class="card"><h2>${esc(m.adv||"Match")} · ${esc(cap(shortDate(m.date||today())))}</h2>${voteBox(m)}</div>`).join("");
   if(dbState!=="on"){$("mlist").innerHTML='<div class="empty">Résultats indisponibles pour le moment.</div>';return}
   $("mlist").innerHTML=ms.length?'<ul class="mlist">'+ms.map(m=>{const r=resOf(m);
-    let h=`<li><button class="mrow" data-open="${esc(m.id)}" aria-expanded="${openMatch===m.id}"><span class="res ${r}">${r}</span><span class="t"><b>${esc(m.adv||"Adversaire")}</b><span>${esc(cap(shortDate(m.date||today())))}${m.form?" · "+(FORM_LABEL[m.form]||""):""}</span></span><span class="sc num">${m.us}–${m.them}</span></button>`;
+    let h=`<li><button class="mrow" data-open="${esc(m.id)}" aria-expanded="${openMatch===m.id}"><span class="res ${r}">${r}</span><span class="t"><b>${esc(m.adv||"Adversaire")}</b><span>${esc(cap(shortDate(m.date||today())))}${m.form?" · "+(FORM_LABEL[m.form]||""):""}</span></span><span class="sc num">${m.us}–${m.them}</span></button>${!voteOpen(m)&&motmText(m)?`<p class="motm-line">Homme du match : <b>${esc(motmText(m))}</b></p>`:voteOpen(m)?`<p class="motm-line hint">Vote homme du match en cours (${daysLeft(m)})</p>`:""}`;
     if(openMatch===m.id){const rows=(m.rows||[]).slice().sort((a,b)=>(b.min||0)-(a.min||0));
       h+=`<div class="mdetail"><div class="tablewrap"><table><tr><th>Joueur</th><th>Poste</th><th>Min</th><th>Passes</th><th>Duels</th><th>Tirs</th><th>B</th><th>PD</th><th>Réc/Per</th><th>Fautes</th><th>Arrêts</th><th>Enc.</th></tr>`+
       rows.map(s=>`<tr><td>${esc(s.name)}${s.starter?"":" (R)"}</td><td>${esc(s.pos||"")}</td><td>${s.min||0}</td><td>${s.pr||0}/${(s.pr||0)+(s.pm||0)}</td><td>${s.dr||0}/${(s.dr||0)+(s.dm||0)}</td><td>${s.tr||0}/${(s.tr||0)+(s.tm||0)}</td><td>${s.b||0}</td><td>${s.pd||0}</td><td>${s.rec||0}/${s.per||0}</td><td>${s.f||0}</td><td>${s.arr||""}</td><td>${s.enc||""}</td></tr>`).join("")+`</table></div>`+
-      `<button class="mini" data-expm="${esc(m.id)}">Exporter ce match (Excel)</button> `+(isCoach?`<button class="mini ${armedM===m.id?"warn":""}" data-delm="${esc(m.id)}">${armedM===m.id?"Confirmer ?":"Supprimer ce match"}</button>`:"")+`</div>`}
+      voteBox(m)+`<button class="mini" data-expm="${esc(m.id)}">Exporter ce match (Excel)</button> `+(isCoach?`<button class="mini ${armedM===m.id?"warn":""}" data-delm="${esc(m.id)}">${armedM===m.id?"Confirmer ?":"Supprimer ce match"}</button>`:"")+`</div>`}
     return h+"</li>"}).join("")+"</ul>":'<div class="empty">Aucun match enregistré. Après un match, onglet Match → Export → « Enregistrer dans les résultats ».</div>';
 }
 
