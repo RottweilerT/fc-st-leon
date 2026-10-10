@@ -1,0 +1,50 @@
+name: Remise à zéro des buts du match
+
+# Met à 0 les buts marqués et encaissés (joueurs + score) du seul match enregistré,
+# s'il est en « buts seulement », pour qu'Armand les ressaisisse à la main.
+# Les anciennes valeurs sont gardées dans le champ backup_buts du match.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  raz:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Remettre les buts à zéro
+        run: |
+          python3 - <<'PY'
+          import json, re, sys, urllib.request, datetime
+          KEY = re.search(r'apiKey:\s*"([^"]+)"', open("index.html", encoding="utf-8").read()).group(1)
+          base = "https://firestore.googleapis.com/v1/projects/fc-st-leon/databases/(default)/documents/fc_matches"
+          docs = json.load(urllib.request.urlopen(f"{base}?pageSize=300&key={KEY}")).get("documents", [])
+          if len(docs) != 1: sys.exit(f"{len(docs)} matchs enregistrés : rien n'est modifié.")
+          d = docs[0]; mid = d["name"].split("/")[-1]; F = d.get("fields", {})
+          if not F.get("lite", {}).get("booleanValue"): sys.exit("Le match n'est pas en « buts seulement » : rien n'est modifié.")
+          def n(v): return int((v or {}).get("integerValue", 0))
+          rows = F.get("rows", {}).get("arrayValue", {}).get("values", [])
+          backup = []
+          for r in rows:
+              rf = r["mapValue"].setdefault("fields", {})
+              backup.append({"mapValue": {"fields": {"id": rf.get("id", {"stringValue": ""}),
+                  "b": {"integerValue": str(n(rf.get("b")))}, "enc": {"integerValue": str(n(rf.get("enc")))}}}})
+              rf["b"] = {"integerValue": "0"}; rf["enc"] = {"integerValue": "0"}
+          now = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+          fields = {
+              "rows": {"arrayValue": {"values": rows}},
+              "us": {"integerValue": "0"}, "them": {"integerValue": "0"},
+              "hist": {"arrayValue": {"values": []}},
+              "backup_buts": {"mapValue": {"fields": {"at": {"stringValue": now},
+                  "us": {"integerValue": str(n(F.get("us")))}, "them": {"integerValue": str(n(F.get("them")))},
+                  "hist": F.get("hist", {"arrayValue": {"values": []}}),
+                  "rows": {"arrayValue": {"values": backup}}}}},
+          }
+          mask = "&".join("updateMask.fieldPaths=" + k for k in fields)
+          url = f"{base}/{mid}?key={KEY}&{mask}&currentDocument.exists=true"
+          urllib.request.urlopen(urllib.request.Request(url, data=json.dumps({"fields": fields}).encode(),
+              method="PATCH", headers={"Content-Type": "application/json"})).read()
+          print(f"OK : {mid}, {len(rows)} joueurs remis à 0 (ancien score {n(F.get('us'))}-{n(F.get('them'))}).")
+          PY
