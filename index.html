@@ -955,7 +955,7 @@ function histRows(list,nameOf){let us=0,them=0;return list.map(e=>{const r={m:e.
   else if(e.type==="ft"){r.ev="Fin du match";r.d="Score "+us+" à "+them}
   return r})}
 function histHTML(rows,mid){if(!rows||!rows.length)return'<p class="hint" style="margin:0">Pas d\'historique pour ce match (enregistré avant cette fonction, ou sans action notée).</p>';
-  return '<ol class="hist">'+rows.map((r,i)=>`<li class="${/But|Fin|Mi-temps|Coup|Reprise/.test(r.ev)&&!/encaissé/.test(r.ev)?"key":""}${/encaissé/.test(r.ev)?" bad":""}"><span class="hm num">${r.m}′</span><span class="he"><b>${esc(r.ev)}</b>${r.p?" · "+esc(r.p):""}${r.d?`<small>${esc(r.d)}</small>`:""}</span>${mid&&r.added&&isCoach?`<button class="mini" data-unadd="${esc(mid)}" data-i="${i}" style="margin-left:auto">Retirer</button>`:""}</li>`).join("")+"</ol>"}
+  return '<ol class="hist">'+rows.map((r,i)=>`<li class="${/But|Fin|Mi-temps|Coup|Reprise/.test(r.ev)&&!/encaissé/.test(r.ev)?"key":""}${/encaissé/.test(r.ev)?" bad":""}"><span class="hm num">${r.m==null||r.m===""?"–":r.m+"′"}</span><span class="he"><b>${esc(r.ev)}</b>${r.p?" · "+esc(r.p):""}${r.d?`<small>${esc(r.d)}</small>`:""}</span>${mid&&r.added&&isCoach?`<button class="mini" data-unadd="${esc(mid)}" data-i="${i}" style="margin-left:auto">Retirer</button>`:""}</li>`).join("")+"</ol>"}
 function rowIds(){return Object.keys(S.p).filter(id=>{const p=S.p[id];return p.cur||playedMs(p)>0||Object.values(p.st).some(v=>v>0)}).sort((a,b)=>nm(a).localeCompare(nm(b),"fr"))}
 function isStarter(p){return p.starter||(!S.started&&!!p.cur)}
 function tsv(){return rowIds().map(id=>{const p=S.p[id];return[frDate(S.date),S.adv,nm(id),mainPos(p),isStarter(p)?"O":"N",mins(p),...ALL.map(x=>p.st[x.k])].join("\t")}).join("\n")}
@@ -1050,7 +1050,7 @@ let openMatch=null,armedM=null;
 $("mlist").onclick=async e=>{const b=e.target.closest("button");if(!b)return;
   if(b.dataset.vote){castVote(b.dataset.vote,b.dataset.cand);return}
   if(b.dataset.open){openMatch=openMatch===b.dataset.open?null:b.dataset.open;render();return}
-  if(b.dataset.exph){const m=D.matches.find(x=>x.id===b.dataset.exph);if(m)downloadCSV("FC-St-Leon_historique_"+(m.date||"")+"_"+slug(m.adv)+".csv",(m.hist||[]).map(r=>[frDate(m.date),m.adv||"",r.m,r.h===2?"2e MT":"1re MT",r.ev,r.p,r.d]),["Date","Adversaire","Minute","Mi-temps","Événement","Joueur(s)","Détail"]);return}
+  if(b.dataset.exph){const m=D.matches.find(x=>x.id===b.dataset.exph);if(m)downloadCSV("FC-St-Leon_historique_"+(m.date||"")+"_"+slug(m.adv)+".csv",(m.hist||[]).map(r=>[frDate(m.date),m.adv||"",r.m==null?"":r.m,r.h===2?"2e MT":r.h===1?"1re MT":"",r.ev,r.p,r.d]),["Date","Adversaire","Minute","Mi-temps","Événement","Joueur(s)","Détail"]);return}
   if(b.dataset.lite){const m=D.matches.find(x=>x.id===b.dataset.lite);if(!m||!db)return;try{await db.doc("fc_matches/"+m.id).set({lite:!isLite(m)},{merge:true});toast(isLite(m)?"Toutes les stats sont rétablies ✓":"Ce match ne garde que les buts ✓")}catch(err){toast(errMsg(err))}return}
   if(b.dataset.expp){const m=D.matches.find(x=>x.id===b.dataset.expp);if(m)downloadCSV("FC-St-Leon_postes_"+(m.date||"")+"_"+slug(m.adv)+".csv",posRowsCSV(m),POS_HEAD);return}
   if(b.dataset.expm){const m=D.matches.find(x=>x.id===b.dataset.expm);if(m)downloadCSV("FC-St-Leon_"+(m.date||"")+"_"+slug(m.adv)+".csv",matchRowsCSV(m));return}
@@ -1194,7 +1194,7 @@ function fixBox(m){const inRows=(m.rows||[]).map(r=>r.id),others=sortPlayers(D.p
   <p class="hint" style="margin:6px 0 8px">Ajoute un but qui n'a pas été noté pendant le match. Le score, les stats du joueur et l'historique sont mis à jour.</p>
   <div class="row" style="margin-bottom:8px">
     <div><label for="fx-type-${esc(m.id)}">Type</label><select id="fx-type-${esc(m.id)}"><option value="b">But marqué</option><option value="enc">But encaissé</option></select></div>
-    <div><label for="fx-min-${esc(m.id)}">Minute</label><input type="number" id="fx-min-${esc(m.id)}" min="0" max="80" inputmode="numeric" placeholder="ex. 23"></div>
+    <div><label for="fx-min-${esc(m.id)}">Minute (facultatif)</label><input type="number" id="fx-min-${esc(m.id)}" min="0" max="80" inputmode="numeric" placeholder="ex. 23"></div>
   </div>
   <label for="fx-who-${esc(m.id)}">Joueur (pour un but encaissé : le gardien)</label>
   <select id="fx-who-${esc(m.id)}" style="margin-bottom:8px"><option value="">Choisir…</option>${(m.rows||[]).slice().sort((a,b)=>rowName(m,a.id).localeCompare(rowName(m,b.id),"fr")).map(r=>opt(r.id,rowName(m,r.id))).join("")}${others.length?`<optgroup label="Autres joueurs">${others.map(p=>opt(p.id,full(p))).join("")}</optgroup>`:""}</select>
@@ -1208,20 +1208,21 @@ async function fixGoal(m,k,id,min,remove){const rows=(m.rows||[]).map(r=>Object.
   if(!r){if(remove)return;const p=playerById(id);r=Object.assign({id,name:p?full(p):"Joueur",pos:"",starter:false,min:0},Object.fromEntries(SK.map(x=>[x,0])));rows.push(r)}
   r[k]=Math.max(0,(r[k]||0)+(remove?-1:1));
   const spells=(m.spells||[]).map(x=>Object.assign({},x,{st:Object.assign({},x.st)}));
-  const h=min>30?2:1,sp=spells.find(x=>x.id===id&&x.h===h&&x.m0<=min&&min<=x.m1)||spells.find(x=>x.id===id);
+  const h=min>30?2:1,sp=(min!=null&&spells.find(x=>x.id===id&&x.h===h&&x.m0<=min&&min<=x.m1))||spells.find(x=>x.id===id);
   if(sp)sp.st[k]=Math.max(0,(sp.st[k]||0)+(remove?-1:1));
   const upd={rows,us:Math.max(0,(m.us||0)+(k==="b"?(remove?-1:1):0)),them:Math.max(0,(m.them||0)+(k==="enc"?(remove?-1:1):0))};
   if(spells.length)upd.spells=spells;
   return upd}
 $("mlist").addEventListener("click",async e=>{const b=e.target.closest("button[data-addgoal],button[data-unadd]");if(!b||!db||!isCoach)return;e.stopPropagation();
   if(b.dataset.addgoal){const m=D.matches.find(x=>x.id===b.dataset.addgoal);if(!m)return;
-    const k=$("fx-type-"+m.id).value,id=$("fx-who-"+m.id).value,min=parseInt($("fx-min-"+m.id).value,10);
-    if(!id){toast("Choisis le joueur.");return}if(!(min>=0&&min<=80)){toast("Indique la minute du but (0 à 80).");return}
+    const k=$("fx-type-"+m.id).value,id=$("fx-who-"+m.id).value,raw=$("fx-min-"+m.id).value.trim(),min=raw===""?null:parseInt(raw,10);
+    if(!id){toast("Choisis le joueur.");return}if(min!=null&&!(min>=0&&min<=80)){toast("La minute doit être entre 0 et 80, ou laisse la case vide.");return}
     const upd=await fixGoal(m,k,id,min,false);const name=rowName(m,id);
-    const ev={m:min,h:min>30?2:1,ev:k==="b"?"But":"But encaissé",p:name,d:"Ajouté après le match",added:true,k,id};
-    const hist=(m.hist||[]).slice();let i=hist.findIndex(x=>x.m>min||(ev.h===1&&x.ev==="Mi-temps")||x.ev==="Fin du match"||(x.h===2&&ev.h===1));if(i<0)i=hist.length;hist.splice(i,0,ev);
+    const ev={m:min,h:min==null?0:min>30?2:1,ev:k==="b"?"But":"But encaissé",p:name,d:"Ajouté après le match"+(min==null?" · minute non précisée":""),added:true,k,id};
+    // goals without a minute go at the end of the list
+    const hist=(m.hist||[]).slice();let i=min==null?-1:hist.findIndex(x=>x.m==null||x.m>min||(ev.h===1&&x.ev==="Mi-temps")||x.ev==="Fin du match"||(x.h===2&&ev.h===1));if(i<0)i=hist.length;hist.splice(i,0,ev);
     upd.hist=rescore(hist);
-    try{await db.doc("fc_matches/"+m.id).set(upd,{merge:true});toast((k==="b"?"But de ":"But encaissé (")+shortName(name)+(k==="b"?"":")")+" ajouté à la "+min+"e minute ✓")}catch(err){toast(errMsg(err))}return}
+    try{await db.doc("fc_matches/"+m.id).set(upd,{merge:true});toast((k==="b"?"But de ":"But encaissé (")+shortName(name)+(k==="b"?"":")")+" ajouté"+(min==null?"":" à la "+min+"e minute")+" ✓")}catch(err){toast(errMsg(err))}return}
   if(b.dataset.unadd){const m=D.matches.find(x=>x.id===b.dataset.unadd);if(!m)return;const i=+b.dataset.i,ev=(m.hist||[])[i];if(!ev||!ev.added)return;
     const upd=await fixGoal(m,ev.k,ev.id,ev.m,true);const hist=m.hist.slice();hist.splice(i,1);upd.hist=rescore(hist);
     try{await db.doc("fc_matches/"+m.id).set(upd,{merge:true});toast("But retiré ✓")}catch(err){toast(errMsg(err))}}},true);
