@@ -1,8 +1,8 @@
 // Mode hors ligne : la page et ses ressources sont gardées sur l'appareil.
 // La page est toujours redemandée au réseau d'abord (pour avoir la dernière version),
 // et la copie locale ne sert que sans connexion. Les données Firebase ne passent pas par ici.
-const CACHE = 'fcsl-v2';
-const CORE = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './logo.svg', './logo-mark.svg', './logo-mono.svg'];
+const CACHE = 'fcsl-v3';
+const CORE = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './crest-96.png', './crest-mono-256.png', './favicon-32.png'];
 const EXTERNAL = ['fonts.googleapis.com', 'fonts.gstatic.com'];
 
 self.addEventListener('install', e => {
