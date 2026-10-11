@@ -1,0 +1,19 @@
+name: Tests du moteur de stats
+
+# Vérifie à chaque modification de l'appli que les règles de statistiques et de possession
+# donnent toujours les résultats attendus (scénarios A à J).
+on:
+  push:
+    paths: ["index.html", "tests/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Lancer les tests
+        run: node tests/moteur.test.js
