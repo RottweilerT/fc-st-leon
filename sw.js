@@ -1,12 +1,12 @@
 // Mode hors ligne : la page et ses ressources sont gardées sur l'appareil.
 // La page est toujours redemandée au réseau d'abord (pour avoir la dernière version),
 // et la copie locale ne sert que sans connexion. Les données Firebase ne passent pas par ici.
-const CACHE = 'fcsl-v4';
-const CORE = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './crest-96.png', './crest-512.png', './icon-round-192.png', './icon-round-512.png', './icon-maskable-512.png', './crest-mono-256.png', './favicon-32.png'];
+const CACHE = 'fcsl-v5';
+const CORE = ['./', './index.html', './manifest.webmanifest', './icon-192-v5.png', './icon-512-v5.png', './crest-96-v5.png', './crest-512-v5.png', './icon-round-192-v5.png', './icon-round-512-v5.png', './icon-maskable-512-v5.png', './crest-mono-256-v5.png', './favicon-32-v5.png'];
 const EXTERNAL = ['fonts.googleapis.com', 'fonts.gstatic.com'];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(CORE)).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(CORE.map(u => new Request(u, { cache: 'reload' })))).then(() => self.skipWaiting()));
 });
 self.addEventListener('activate', e => {
   e.waitUntil(caches.keys()
@@ -17,11 +17,11 @@ self.addEventListener('fetch', e => {
   const req = e.request;
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
-  if (req.mode === 'navigate') {
+  if (req.mode === 'navigate' || url.pathname.endsWith('.webmanifest')) {
     e.respondWith(fetch(req).then(res => {
-      if (res.ok) { const copy = res.clone(); caches.open(CACHE).then(c => c.put('./index.html', copy)); }
+      if (res.ok) { const copy = res.clone(); caches.open(CACHE).then(c => c.put(req.mode === 'navigate' ? './index.html' : req, copy)); }
       return res;
-    }).catch(() => caches.match('./index.html').then(r => r || caches.match('./'))));
+    }).catch(() => req.mode === 'navigate' ? caches.match('./index.html').then(r => r || caches.match('./')) : caches.match(req)));
     return;
   }
   const static_ = url.origin === location.origin || EXTERNAL.includes(url.hostname)
