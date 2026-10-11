@@ -272,16 +272,18 @@ label.sub{font-weight:500;font-size:12px}
 .kfam small{display:block;font-family:var(--body);font-weight:600;font-size:10.5px;letter-spacing:0;text-transform:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .k.k2{grid-column:span 3}.k.k3{grid-column:span 2;padding:0 8px}
 /* possession: two big halves, the team with the ball is filled; one tap on the other half corrects it */
-.poss{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px}
-.pz{border:2px solid var(--line);background:var(--surface);color:var(--ink);border-radius:12px;min-height:46px;padding:4px 10px;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:1px;text-align:left;transition:background .15s,border-color .15s}
-.pz-l{font-family:var(--display);font-weight:700;font-size:15px;text-transform:uppercase;letter-spacing:.03em;display:flex;align-items:center;gap:6px;white-space:nowrap}
+.poss{display:grid;grid-template-columns:1fr 1fr 80px;gap:6px;margin-bottom:8px}
+.pz{min-width:0;overflow:hidden;border:2px solid var(--line);background:var(--surface);color:var(--ink);border-radius:12px;min-height:46px;padding:4px 8px;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:1px;text-align:left;transition:background .15s,border-color .15s}
+.pz-l{font-family:var(--display);font-weight:700;font-size:14px;text-transform:uppercase;letter-spacing:.01em;display:flex;align-items:center;gap:5px;white-space:nowrap;max-width:100%}
 .pz-v{font-size:12.5px;color:var(--muted);white-space:nowrap}
 .pz-dot{width:10px;height:10px;border-radius:50%;border:2px solid currentColor;flex:none}
-.pz.us{color:var(--good)}.pz.them{color:var(--bad)}
+.pz.us{color:var(--good)}.pz.them{color:var(--bad)}.pz.unk{color:var(--blue);align-items:center;text-align:center;padding:4px 4px}
+.pz.unk .pz-l{font-size:13.5px;letter-spacing:0;text-transform:none}
+.pz.on.unk{background:var(--blue);border-color:var(--blue);color:var(--surface)}
+
 .pz.on.us{background:var(--good);border-color:var(--good);color:var(--surface)}
 .pz.on.them{background:var(--bad);border-color:var(--bad);color:var(--surface)}
 .pz.on .pz-v{color:inherit;opacity:.9}.pz.on .pz-dot{background:currentColor}
-.pz.on .pz-l::after{content:"⚽ ballon";font-family:var(--body);font-size:11px;font-weight:600;text-transform:none;letter-spacing:0;background:color-mix(in srgb,currentColor 22%,transparent);border-radius:999px;padding:1px 7px}
 .pz:disabled{opacity:.6}
 .pbar{grid-column:1/-1;height:6px;border-radius:999px;background:var(--bad);overflow:hidden;opacity:.85}
 .pbar i{display:block;height:100%;width:50%;background:var(--good);transition:width .4s}
@@ -660,6 +662,7 @@ addEventListener("load",hide);setTimeout(hide,2500)})();</script>
     <div class="poss" id="poss" role="group" aria-label="Possession du ballon">
       <button class="pz us" data-poss="us" id="pz-us" aria-pressed="false"><span class="pz-l"><i class="pz-dot"></i>Notre équipe</span><span class="pz-v num" id="pz-us-v">–</span></button>
       <button class="pz them" data-poss="them" id="pz-them" aria-pressed="false"><span class="pz-l"><i class="pz-dot"></i>Adversaire</span><span class="pz-v num" id="pz-them-v">–</span></button>
+      <button class="pz unk" data-poss="unk" id="pz-unk" aria-pressed="false" title="Personne n'a le ballon : le temps compte à part"><span class="pz-l" id="pz-unk-l">Libre</span><span class="pz-v num" id="pz-unk-v">–</span></button>
       <div class="pbar" aria-hidden="true"><i id="pbar-us"></i></div>
       <div class="pstate" id="pstate" aria-live="polite"></div>
     </div>
@@ -1169,7 +1172,16 @@ function setPoss(to){if(S.ended||!POSS_L[to])return;
   const e={id:"e"+rid(),code:"poss",to,origin:"manual",gt:mt(),h:S.half};
   S.ev.push(e);hist("poss",{to,eid:e.id});astFor=null;rebuild();S.saved=false;save();
   $("last").textContent="Possession corrigée : "+POSS_L[to].toLowerCase();render();flipPoss()}
-$("poss").onclick=e=>{const b=e.target.closest("button[data-poss]");if(b)setPoss(b.dataset.poss)};
+// « ballon libre »: nobody has the ball, the clock runs and the time is kept apart (outside the percentages).
+// Tapping again gives the ball back to the team that had it; any action typed meanwhile also ends it.
+function toggleFree(){if(!S.started||S.ended)return;let e;
+  if(RE.poss==="unk"){const last=S.ev.slice().reverse().find(x=>x.code==="poss"&&x.to==="unk");const to=last&&last.prev&&last.prev!=="unk"?last.prev:"us";
+    e={id:"e"+rid(),code:"poss",to,origin:"resume",gt:mt(),h:S.half};hist("poss",{to,eid:e.id,origin:"resume"});
+    $("last").textContent="Reprise : ballon à "+(to==="us"?"nous":"l'adversaire")}
+  else{e={id:"e"+rid(),code:"poss",to:"unk",origin:"neutral",prev:RE.poss,gt:mt(),h:S.half};hist("poss",{to:"unk",eid:e.id,origin:"neutral"});
+    $("last").textContent="Ballon libre : personne n'a le ballon"}
+  S.ev.push(e);astFor=null;rebuild();S.saved=false;save();render();flipPoss()}
+$("poss").onclick=e=>{const b=e.target.closest("button[data-poss]");if(!b)return;if(b.dataset.poss==="unk")toggleFree();else setPoss(b.dataset.poss)};
 function setAssist(pid){const e=S.ev.find(x=>x.id===astFor);if(!e)return;
   if(e.ast===pid){delete e.ast;delete e.asi}else{e.ast=pid;e.asi=S.spells.findIndex(x=>x.id===pid&&x.t1==null)}
   const h=S.hist.find(x=>x.eid===e.id);if(h){if(e.ast)h.ast=e.ast;else delete h.ast}
@@ -1188,15 +1200,17 @@ $("keys").innerHTML=KEYROWS.map(([fam,bs])=>`<div class="kfam">${fam}</div>`+bs.
 $("keys").onclick=e=>{const b=e.target.closest(".k");if(b)act(b.dataset.k)};
 function renderPoss(){const t=possNow(),pc=possPct(t),cur=RE.poss;
   ["us","them"].forEach(k=>{const b=$("pz-"+k);b.classList.toggle("on",cur===k);b.setAttribute("aria-pressed",cur===k);b.disabled=S.ended;
-    $("pz-"+k+"-v").textContent=S.started?(pc?Math.round(pc[k])+" %":"– %")+" · "+fmt(t[k]):(cur===k?"Coup d'envoi":"")});
+    $("pz-"+k+"-v").textContent=S.started?(cur===k?"⚽ ":"")+(pc?Math.round(pc[k])+" %":"– %")+" · "+fmt(t[k]):(cur===k?"⚽ Coup d'envoi":"")});
+  const fb=$("pz-unk");fb.classList.toggle("on",cur==="unk");fb.setAttribute("aria-pressed",cur==="unk");fb.disabled=!S.started||S.ended;
+  $("pz-unk-l").textContent=cur==="unk"?"Reprendre":"Libre";$("pz-unk-v").textContent=S.started?fmt(t.unk):"";
   $("pbar-us").style.width=(pc?pc.us:50)+"%";
-  $("pstate").textContent=!S.started?"Touche l'équipe qui donne le coup d'envoi.":S.ended?"Match terminé.":!S.runAt?"Chrono en pause : la possession ne compte pas.":""}
+  $("pstate").textContent=!S.started?"Touche l'équipe qui donne le coup d'envoi.":S.ended?"Match terminé.":!S.runAt?"Chrono en pause : la possession ne compte pas.":cur==="unk"?"Ballon libre : le temps compte à part. Touche « Reprendre » ou note une action.":""}
 rebuild();
 
 // one readable line per event: {m, h, ev, p, d}
 function histRows(list,nameOf){let us=0,them=0;return list.map(e=>{const r={m:e.m,h:e.h,ev:"",p:"",d:""};
   if(e.type==="stat"){r.ev=LABEL[e.k]||e.k;r.p=nameOf(e.id);const d=[];if(e.pos&&SL[e.pos])d.push(SL[e.pos]);if(e.k==="b"){us++;d.push("Score "+us+" à "+them)}if(e.k==="enc"){them++;d.push("Score "+us+" à "+them)}if(e.ast)d.push("Passe déc. : "+nameOf(e.ast));r.d=d.join(" · ")}
-  else if(e.type==="poss"){r.ev="Possession corrigée";r.d="Ballon à : "+(POSS_L[e.to]||e.to).toLowerCase()}
+  else if(e.type==="poss"){if(e.to==="unk"){r.ev="Ballon libre";r.d="Personne n'a le ballon"}else{r.ev=e.origin==="resume"?"Reprise de la possession":"Possession corrigée";r.d="Ballon à : "+(POSS_L[e.to]||e.to).toLowerCase()}}
   else if(e.type==="sub"){r.ev="Changement";r.p=nameOf(e.in);r.d=(e.out!=null?"remplace "+nameOf(e.out)+" · ":"entre · ")+(SL[e.k]||e.k)}
   else if(e.type==="swap"){r.ev="Échange de postes";r.p=nameOf(e.a)+(e.b!=null?" ↔ "+nameOf(e.b):"");r.d=(SL[e.ka]||"")+" ↔ "+(SL[e.kb]||"")}
   else if(e.type==="move"){r.ev="Changement de poste";r.p=nameOf(e.a);r.d=(SL[e.ka]||"")+" → "+(SL[e.kb]||"")}

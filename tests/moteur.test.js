@@ -118,5 +118,19 @@ test("Mi-temps : le temps est réparti par période, ballon libre exclu du pourc
   assert.deepStrictEqual([t.h1.us, t.h1.them, t.h2.us, t.h2.unk], [20000, 10000, 10000, 10000]);
   assert.strictEqual(possPct(t).us, 75);                       // 30 s / (30 + 10) — les 10 s libres sont à part
 });
+test("Ballon libre : le temps compte à part, hors pourcentage, puis reprise", () => {
+  const evs = [Object.assign(poss("unk", 20), { origin: "neutral", prev: "us" }), Object.assign(poss("us", 50), { origin: "resume" })];
+  const R = replayEvents(evs, "us"), t = possTotals(R.changes, 80000, Infinity);
+  assert.deepStrictEqual([t.us, t.them, t.unk], [50000, 0, 30000]);
+  assert.strictEqual(possPct(t).us, 100);                       // les 30 s libres ne sont dans aucun pourcentage
+  assert.deepStrictEqual(statsFromList(R.list).by, {});         // aucune stat individuelle
+});
+test("Ballon libre : une action saisie pendant ce temps reprend la logique", () => {
+  let R = replayEvents([Object.assign(poss("unk", 10), { prev: "us" }), ev("pass_ok", "j", 25)], "us");
+  assert.strictEqual(R.poss, "us"); assert.ok(!statsFromList(R.list).by.j.rec);   // pas de récupération inventée
+  R = replayEvents([Object.assign(poss("unk", 10), { prev: "us" }), ev("duel_won", "j", 25)], "us");
+  assert.strictEqual(R.poss, "us"); assert.deepStrictEqual(statsFromList(R.list).by.j, { dr: 1, rec: 1 }); // ballon disputé gagné = récupération
+  assert.strictEqual(possTotals(R.changes, 40000, Infinity).unk, 15000);
+});
 console.log("\n" + (n - failed) + " / " + n + " tests réussis");
 process.exit(failed ? 1 : 0);
