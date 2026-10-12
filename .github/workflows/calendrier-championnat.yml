@@ -1,0 +1,65 @@
+name: Ajouter les matchs du championnat au calendrier
+
+# Ajout ponctuel des matchs du championnat 2026-2027 (samedis) dans l'onglet Calendrier.
+# Identifiants fixes (champ-2627-jNN) : relancer ne crée pas de doublon.
+# Une date qui a déjà un match (ajouté à la main) est laissée telle quelle.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ajout:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Écrire les matchs
+        run: |
+          python3 - <<'PY'
+          import json, re, urllib.request
+          KEY = re.search(r'apiKey:\s*"([^"]+)"', open("index.html", encoding="utf-8").read()).group(1)
+          base = "https://firestore.googleapis.com/v1/projects/fc-st-leon/databases/(default)/documents/fc_events"
+          # journée, date, début, fin, adversaire, à domicile ?, lieu
+          M = [
+            (1,  "2026-10-24", "11:00", "12:00", "TP Carthage - Hannibal",   True,  "M. Hilsz honneur A · Paris 20"),
+            (2,  "2026-10-31", "11:00", "12:00", "FC Skalla",                False, "M. Hilsz honneur A · Paris 20"),
+            (3,  "2026-11-07", "11:00", "12:00", "Les Gars de la Ville",     True,  "Porte d'Aubervilliers B · 75018 Paris"),
+            (4,  "2026-11-14", "11:00", "12:00", "The Party Football Club",  False, "S. Lenglen n°1 A · Paris 15"),
+            (5,  "2026-11-21", "11:00", "12:00", "AS Licusati",              True,  "Porte d'Aubervilliers B · 75018 Paris"),
+            (6,  "2026-11-28", "11:00", "12:00", "Royal Monceau",            False, "M. Hilsz honneur A · Paris 20"),
+            (8,  "2026-12-12", "11:00", "12:00", "Be Foot",                  True,  "M. Hilsz honneur A · Paris 20"),
+            (9,  "2026-12-19", "11:00", "12:00", "Vaillant FC",              True,  "L. Lumière honneur B · Paris 20"),
+            (10, "2027-01-16", "11:00", "12:00", "St Antony S Passaiyoor",   False, "S. Lenglen n°1 B · Paris 15"),
+            (11, "2027-01-23", "11:30", "12:30", "Lokomotiv des 2 Gares A",  False, "L. Biancotto A · 75017 Paris"),
+            (12, "2027-01-30", "12:00", "13:00", "AJ Pepere",                True,  "La Grenouillère B · 92 Antony"),
+            (13, "2027-02-13", "12:00", "13:00", "Cibie Sports",             False, "La Grenouillère B · 92 Antony"),
+          ]
+          def val(v):
+              for t in ("stringValue", "booleanValue"):
+                  if t in v: return v[t]
+              if "integerValue" in v: return int(v["integerValue"])
+              return None
+          docs, token = [], ""
+          while True:
+              d = json.load(urllib.request.urlopen(f"{base}?pageSize=300&key={KEY}" + (f"&pageToken={token}" if token else "")))
+              docs += d.get("documents", []); token = d.get("nextPageToken")
+              if not token: break
+          taken = {}
+          for d in docs:
+              f = {k: val(v) for k, v in d.get("fields", {}).items()}
+              i = d["name"].split("/")[-1]
+              if f.get("kind") == "match" and not i.startswith("champ-2627-"): taken[f.get("date")] = i
+          added = skipped = 0
+          for j, date, t0, t1, adv, home, place in M:
+              if date in taken:
+                  print(f"::notice::J{j} {date} : un match existe déjà ce jour-là ({taken[date]}), rien n'est ajouté"); skipped += 1; continue
+              note = f"Championnat J{j} · contre {adv} ({'à domicile' if home else 'à l’extérieur'})"
+              fields = {"date": date, "time": t0, "end": t1, "kind": "match", "place": place, "note": note, "sid": "", "adv": adv, "home": home}
+              body = {"fields": {k: ({"booleanValue": v} if isinstance(v, bool) else {"stringValue": v}) for k, v in fields.items()}}
+              body["fields"]["rep"] = {"integerValue": "0"}
+              url = f"{base}/champ-2627-j{j:02d}?key={KEY}"
+              urllib.request.urlopen(urllib.request.Request(url, data=json.dumps(body).encode(), method="PATCH", headers={"Content-Type": "application/json"})).read()
+              print(f"J{j} {date} {t0} {adv}"); added += 1
+          print(f"::notice::{added} matchs écrits, {skipped} déjà présents")
+          PY
