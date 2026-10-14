@@ -25,6 +25,7 @@ if(sa&&!sessionStorage.getItem("fcsl-splash")){document.documentElement.classLis
   --good:#237A4B; --good-bg:#E1F2E7; --bad:#B8402F; --bad-bg:#F8E3DF;
   --gold:#A87E00; --gold-bg:#FBF1CF; --blue:#2F5F9E; --blue-bg:#E2EBF7;
   --we-bg:#E8EEF8; --we-line:#C3D1E8; --we-ink:#2F4F86;
+  --s-us:#2a78d6; --s-them:#eb6834;
   --display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
   --body:"Barlow",system-ui,-apple-system,"Segoe UI",Arial,sans-serif;
 }
@@ -34,14 +35,14 @@ if(sa&&!sessionStorage.getItem("fcsl-splash")){document.documentElement.classLis
   --grass:#1F4A2E; --grass2:#235235; --chalk:#BFD3C5; --label-bg:rgba(0,0,0,.45);
   --shirt:#E9F2EC; --shirt-ink:#16402A;
   --good:#5CC98C; --good-bg:#17301F; --bad:#EE7B69; --bad-bg:#3A1C17;
-  --gold:#F0C43A; --gold-bg:#3A3112; --blue:#8DB4EA; --blue-bg:#1B2A40; --we-bg:#1A2436; --we-line:#2C3B57; --we-ink:#A9C3EE; color-scheme:dark}}
+  --gold:#F0C43A; --gold-bg:#3A3112; --blue:#8DB4EA; --blue-bg:#1B2A40; --we-bg:#1A2436; --we-line:#2C3B57; --we-ink:#A9C3EE; --s-us:#3987e5; --s-them:#d95926; color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#0F1813; --surface:#18241D; --ink:#E6EEE8; --muted:#93A399; --line:#2A3A30;
   --pitch:#5FB384; --pitch-ink:#0B1510; --pitch-soft:#1E3327;
   --grass:#1F4A2E; --grass2:#235235; --chalk:#BFD3C5; --label-bg:rgba(0,0,0,.45);
   --shirt:#E9F2EC; --shirt-ink:#16402A;
   --good:#5CC98C; --good-bg:#17301F; --bad:#EE7B69; --bad-bg:#3A1C17;
-  --gold:#F0C43A; --gold-bg:#3A3112; --blue:#8DB4EA; --blue-bg:#1B2A40; --we-bg:#1A2436; --we-line:#2C3B57; --we-ink:#A9C3EE; color-scheme:dark}
+  --gold:#F0C43A; --gold-bg:#3A3112; --blue:#8DB4EA; --blue-bg:#1B2A40; --we-bg:#1A2436; --we-line:#2C3B57; --we-ink:#A9C3EE; --s-us:#3987e5; --s-them:#d95926; color-scheme:dark}
 
 html,body{height:100%}
 body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;-webkit-tap-highlight-color:transparent}
@@ -76,7 +77,7 @@ html.splash #splash{display:flex}
 .clockbtn:disabled{opacity:.35}
 
 nav.tabs{display:flex;padding:2px 8px 0;background:var(--surface);border-bottom:1px solid var(--line)}
-nav.tabs button{flex:1;border:0;background:none;padding:9px 2px 10px;font-family:var(--display);font-weight:600;font-size:14px;letter-spacing:.03em;text-transform:uppercase;color:var(--muted);border-bottom:3px solid transparent;white-space:nowrap}
+nav.tabs button{flex:1 1 auto;border:0;background:none;padding:9px 3px 10px;font-family:var(--display);font-weight:600;font-size:13px;letter-spacing:0;text-transform:uppercase;color:var(--muted);border-bottom:3px solid transparent;white-space:nowrap}
 nav.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--pitch)}
 .subtabs{display:flex;gap:6px;margin-bottom:12px}
 .subtabs button{flex:1;border:1.5px solid var(--line);background:var(--surface);border-radius:999px;padding:8px 6px;font-weight:600;font-size:14px}
@@ -141,6 +142,37 @@ textarea.notearea{min-height:80px;font:inherit;white-space:pre-wrap}
 .leaders{grid-template-columns:repeat(3,1fr)}
 @media (max-width:640px){.leaders{grid-template-columns:1fr}}
 .histcard{margin:0 0 12px}
+/* ---------- onglet Stats ---------- */
+.st-filters{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.st-f{display:flex;flex-direction:column;gap:3px;font-size:12px;font-weight:600;color:var(--muted);margin:0;min-width:0}
+.st-f select{width:100%;min-height:40px;padding:6px 8px;font-weight:600;color:var(--ink)}
+.st-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:12px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px;min-width:0}
+.kpi span{display:block;font-size:12.5px;color:var(--muted);font-weight:600}
+.kpi b{display:block;font-family:var(--display);font-weight:700;font-size:28px;line-height:1.1;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kpi small{display:block;font-size:12px;color:var(--muted);line-height:1.3;margin-top:1px}
+.vcard h2{margin-bottom:2px}.vsub{margin:0 0 6px}
+.vchart{width:100%;position:relative}
+.vchart svg,.vmulti svg{display:block;width:100%;height:auto;overflow:visible}
+.vmulti{display:grid;grid-template-columns:1fr;gap:10px}
+.vmulti h3{margin:0;font-size:13.5px;font-weight:600;color:var(--ink)}
+.vlegend{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--ink);margin:2px 0 4px}
+.vlegend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.vgrid{stroke:var(--line);stroke-width:1;shape-rendering:crispEdges}
+.vaxis{fill:var(--muted);font:11px var(--body);font-variant-numeric:tabular-nums}
+.vlab{fill:var(--ink);font:600 12px var(--body)}
+.vval{fill:var(--ink);font:600 12px var(--body);font-variant-numeric:tabular-nums}
+.vmark{cursor:pointer;outline:none;transition:opacity .12s}
+.vmark:hover,.vmark:focus-visible{opacity:.78}
+.vmark:focus-visible{stroke:var(--ink);stroke-width:2}
+.vcross{stroke:var(--muted);stroke-width:1;pointer-events:none}
+.vtable{margin-top:6px}.vtable summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--muted);padding:4px 0}
+.vtable .tablewrap{margin:6px 0 0}
+.vtip{position:fixed;z-index:60;pointer-events:none;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:10px;box-shadow:0 6px 18px rgba(0,0,0,.18);padding:7px 10px;font-size:12.5px;max-width:230px}
+.vtip .tt-h{color:var(--muted);font-size:12px;margin-bottom:3px}
+.vtip .tt-r{display:flex;align-items:center;gap:7px;white-space:nowrap}
+.vtip .tt-r b{font-size:14px;font-variant-numeric:tabular-nums}
+.vtip .tt-k{display:inline-block;width:12px;height:3px;border-radius:2px}
 .na{color:var(--muted);font-size:.85em;font-weight:600;letter-spacing:.02em}
 :root{--r-g:#F2C230;--r-d:#8DB4EA;--r-m:#7CC79A;--r-a:#F4A06B;--r-ink:#14201A}
 .tl{margin:6px 0 4px}
@@ -416,6 +448,7 @@ addEventListener("load",hide);setTimeout(hide,2500)})();</script>
     <button id="t-calendrier" role="tab" data-tab="calendrier">Calendrier</button>
     <button id="t-match" role="tab" data-tab="match">Match</button>
     <button id="t-resultats" role="tab" data-tab="resultats">Résultats</button>
+    <button id="t-stats" role="tab" data-tab="stats">Stats</button>
     <button id="t-notes" role="tab" data-tab="notes">Notes</button>
   </nav>
 
@@ -636,6 +669,24 @@ addEventListener("load",hide);setTimeout(hide,2500)})();</script>
   </main>
 
   <!-- NOTES -->
+  <!-- STATS -->
+  <main id="v-stats" hidden>
+    <div class="st-filters" role="group" aria-label="Filtres des statistiques">
+      <label class="st-f">Matchs <select id="st-scope"></select></label>
+      <label class="st-f">Classement <select id="st-metric"><option value="b">Buts</option><option value="pd">Passes décisives</option><option value="ga">Buts + passes déc.</option><option value="min">Minutes jouées</option><option value="n">Matchs joués</option></select></label>
+    </div>
+    <div id="st-empty" class="empty" hidden>Aucun match enregistré pour l'instant. Après un match : onglet Match → Export → « Enregistrer dans les résultats ».</div>
+    <div id="st-body">
+      <div class="st-kpis" id="st-kpis"></div>
+      <section class="card vcard" id="st-goals-card"><h2>Buts par match</h2><p class="hint vsub" id="st-goals-sub"></p><div class="vlegend" id="st-goals-leg"></div><div class="vchart" id="st-goals"></div><details class="vtable"><summary>Voir les chiffres</summary><div class="tablewrap"><table id="st-goals-t"></table></div></details></section>
+      <section class="card vcard" id="st-poss-card"><h2>Possession par match</h2><p class="hint vsub">Part du temps où notre équipe avait le ballon (ballon libre exclu). Ligne fine : 50 %.</p><div class="vchart" id="st-poss"></div><details class="vtable"><summary>Voir les chiffres</summary><div class="tablewrap"><table id="st-poss-t"></table></div></details></section>
+      <section class="card vcard" id="st-rates-card"><h2>Taux de réussite par match</h2><p class="hint vsub">Notre équipe, match par match. Les matchs en « buts seulement » ne comptent pas.</p><div class="vmulti" id="st-rates"></div><details class="vtable"><summary>Voir les chiffres</summary><div class="tablewrap"><table id="st-rates-t"></table></div></details></section>
+      <section class="card vcard"><h2 id="st-rank-title">Classement des joueurs</h2><p class="hint vsub" id="st-rank-sub"></p><div class="vchart" id="st-rank"></div><details class="vtable"><summary>Voir les chiffres</summary><div class="tablewrap"><table id="st-rank-t"></table></div></details></section>
+      <section class="card vcard" id="st-me" hidden><h2>Mes stats <span class="tag">visible seulement par toi</span></h2><p class="hint vsub" id="st-me-sub"></p><div class="st-kpis" id="st-me-kpis"></div></section>
+    </div>
+  </main>
+  <div class="vtip" id="vtip" role="status" hidden></div>
+
   <main id="v-notes" hidden>
     <div class="card">
       <h2 id="nt-title">Nouveau ticket</h2>
@@ -824,7 +875,7 @@ function answer(pid,eid){const r=D.rsvp[pid];return r&&r.a&&r.a[eid]||""}
 const wq={};function queue(key,fn){wq[key]=(wq[key]||Promise.resolve()).then(fn,fn);return wq[key]}
 
 /* ---------- tabs ---------- */
-let tab=ls(TK,"effectif");if(!["effectif","calendrier","match","resultats","notes"].includes(tab))tab="effectif";
+let tab=ls(TK,"effectif");if(!["effectif","calendrier","match","resultats","stats","notes"].includes(tab))tab="effectif";
 document.querySelectorAll("nav.tabs button").forEach(b=>b.onclick=()=>{tab=b.dataset.tab;lss(TK,tab);subMode=false;pick=null;render();$("v-"+tab).scrollTop=0;});
 
 /* =====================================================
@@ -1567,6 +1618,140 @@ function renderResultats(){
 }
 
 /* =====================================================
+   STATS — visualisation des matchs enregistrés
+   Couleurs validées (daltonisme compris) : bleu = notre équipe, orange = adversaire.
+   Chaque graphique a son tableau de chiffres ; l'infobulle n'est jamais le seul accès à une valeur.
+   ===================================================== */
+let stScope="all",stMetric="b";
+$("st-scope").onchange=e=>{stScope=e.target.value;renderStatsTab()};
+$("st-metric").onchange=e=>{stMetric=e.target.value;renderStatsTab()};
+addEventListener("resize",()=>{if(tab==="stats"){clearTimeout(window._stRz);window._stRz=setTimeout(renderStatsTab,150)}});
+const vtip=$("vtip");
+function hideTip(){vtip.hidden=true}
+// tooltip rows: [label, value, colorVar|null]; built with textContent (names come from the database)
+function showTip(x,y,head,rows){vtip.textContent="";const h=document.createElement("div");h.className="tt-h";h.textContent=head;vtip.appendChild(h);
+  rows.forEach(([l,v,c])=>{const r=document.createElement("div");r.className="tt-r";if(c){const k=document.createElement("i");k.className="tt-k";k.style.background="var("+c+")";r.appendChild(k)}
+    const b=document.createElement("b");b.textContent=v;const sp=document.createElement("span");sp.textContent=l;r.appendChild(b);r.appendChild(sp);vtip.appendChild(r)});
+  vtip.hidden=false;const w=vtip.offsetWidth,hh=vtip.offsetHeight;let px=x+14,py=y-hh-12;if(px+w>innerWidth-8)px=x-w-14;if(px<8)px=8;if(py<8)py=y+16;vtip.style.left=px+"px";vtip.style.top=py+"px"}
+function tipFromEvent(e,el){const r=el.getBoundingClientRect();return e&&e.clientX!=null&&e.type!=="focus"?[e.clientX,e.clientY]:[r.left+r.width/2,r.top]}
+// marks carry their tooltip in data attributes; same details on hover, tap and keyboard focus
+function wireMarks(root){root.querySelectorAll("[data-tt]").forEach(m=>{const go=e=>{const d=JSON.parse(m.dataset.tt);const [x,y]=tipFromEvent(e,m);showTip(x,y,d.h,d.r)};
+  m.addEventListener("pointermove",go);m.addEventListener("pointerdown",go);m.addEventListener("focus",go);m.addEventListener("pointerleave",hideTip);m.addEventListener("blur",hideTip)})}
+const tt=(h,r)=>esc(JSON.stringify({h,r}));
+const shortD=d=>d?d.slice(8,10)+"/"+d.slice(5,7):"";
+function niceStep(max){return max<=5?1:max<=10?2:max<=25?5:10}
+function chartW(el){return Math.max(260,Math.min(720,el.clientWidth||340))}
+// grouped columns (≤ 24 px wide, 4 px rounded top, 2 px surface gap between the pair)
+function colChart(el,cats,series){const W=chartW(el),H=190,L=26,R=6,T=10,B=34,pw=W-L-R,ph=H-T-B;
+  const max=Math.max(1,...series.flatMap(s=>s.vals.map(v=>v||0))),st=niceStep(max),top=Math.ceil(max/st)*st,y=v=>T+ph-(v/top)*ph;
+  const band=pw/cats.length,bw=Math.min(18,(band-8)/series.length-1),every=Math.ceil(cats.length/Math.max(1,Math.floor(pw/34)));
+  let g="";for(let v=0;v<=top;v+=st)g+=`<line class="vgrid" x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}"/><text class="vaxis" x="${L-6}" y="${y(v)+4}" text-anchor="end">${v}</text>`;
+  let m="";cats.forEach((c,i)=>{const cx=L+band*i+band/2,x0=cx-(bw*series.length+2*(series.length-1))/2;
+    series.forEach((s,j)=>{const v=s.vals[i]||0,x=x0+j*(bw+2),h=Math.max(0,y(0)-y(v)),r=Math.min(4,h,bw/2);
+      const d=h>0?`M${x},${y(0)}V${y(v)+r}Q${x},${y(v)} ${x+r},${y(v)}H${x+bw-r}Q${x+bw},${y(v)} ${x+bw},${y(v)+r}V${y(0)}Z`:"";
+      // hit target = the whole column slot, bigger than the painted bar
+      m+=`<g class="vmark" tabindex="0" data-tt="${tt(c.label,series.map(q=>[q.name,String(q.vals[i]||0),q.color]))}" aria-label="${esc(c.label)} : ${esc(s.name)} ${v}"><rect x="${x-1}" y="${T}" width="${bw+2}" height="${ph}" fill="transparent"/>${d?`<path d="${d}" fill="var(${s.color})"/>`:`<rect x="${x}" y="${y(0)-1.5}" width="${bw}" height="1.5" fill="var(${s.color})"/>`}</g>`});
+    if(i%every===0)m+=`<text class="vaxis" x="${cx}" y="${H-B+16}" text-anchor="middle">${esc(c.tick)}</text>`});
+  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(series.map(s=>s.name).join(" et "))} par match">${g}<line class="vgrid" x1="${L}" x2="${W-R}" y1="${y(0)}" y2="${y(0)}" style="stroke:var(--muted)"/>${m}</svg>`;wireMarks(el)}
+// single-series line, 2 px, ≥ 8 px dots with a 2 px surface ring; gaps where there is no data; crosshair snaps to the nearest match
+function lineChart(el,cats,vals,o){o=o||{};const W=chartW(el),H=o.h||170,L=30,R=34,T=12,B=o.noX?12:30,pw=W-L-R,ph=H-T-B,lo=o.min??0,hi=o.max??100;
+  const x=i=>cats.length===1?L+pw/2:L+pw*i/(cats.length-1),y=v=>T+ph-((v-lo)/(hi-lo))*ph,fmtv=o.fmt||(v=>Math.round(v)+" %");
+  let g="";(o.ticks||[0,50,100]).forEach(v=>g+=`<line class="vgrid" x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}"${o.ref===v?' style="stroke:var(--muted)"':""}/><text class="vaxis" x="${L-6}" y="${y(v)+4}" text-anchor="end">${v}${o.unit||""}</text>`);
+  let path="",open=false;vals.forEach((v,i)=>{if(v==null){open=false;return}path+=(open?"L":"M")+x(i).toFixed(1)+","+y(v).toFixed(1);open=true});
+  let dots="";vals.forEach((v,i)=>{if(v!=null)dots+=`<circle cx="${x(i)}" cy="${y(v)}" r="4.5" fill="var(${o.color||"--s-us"})" stroke="var(--surface)" stroke-width="2"/>`});
+  const li=vals.map((v,i)=>v==null?-1:i).filter(i=>i>=0).pop();
+  const endLab=li!=null&&li>=0?`<text class="vval" x="${x(li)+8}" y="${y(vals[li])+4}">${esc(fmtv(vals[li]))}</text>`:"";
+  let xt="";if(!o.noX){const every=Math.ceil(cats.length/Math.max(1,Math.floor(pw/34)));cats.forEach((c,i)=>{if(i%every===0)xt+=`<text class="vaxis" x="${x(i)}" y="${H-B+16}" text-anchor="middle">${esc(c.tick)}</text>`})}
+  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(o.label||"")}">${g}${xt}<path d="${path}" fill="none" stroke="var(${o.color||"--s-us"})" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>${dots}${endLab}<line class="vcross" id="" x1="0" x2="0" y1="${T}" y2="${T+ph}" visibility="hidden"/><rect class="vhit" x="${L-10}" y="${T}" width="${pw+20}" height="${ph}" fill="transparent" tabindex="0" aria-label="${esc(o.label||"")} : parcourir les matchs"/></svg>`;
+  const svg=el.querySelector("svg"),cross=svg.querySelector(".vcross"),hit=svg.querySelector(".vhit");let ki=cats.length-1;
+  const at=(i,cx,cy)=>{const X=x(i);cross.setAttribute("x1",X);cross.setAttribute("x2",X);cross.setAttribute("visibility","visible");const v=vals[i];
+    const r=svg.getBoundingClientRect(),sx=r.left+X*r.width/W;showTip(cx??sx,cy??(r.top+(v==null?T:y(v))*r.height/H),cats[i].label,[[o.name||"",v==null?"pas de donnée":fmtv(v),o.color||"--s-us"]].concat(o.extra?o.extra(i):[]))};
+  const near=e=>{const r=svg.getBoundingClientRect(),px=(e.clientX-r.left)*W/r.width;let b=0,bd=1e9;cats.forEach((c,i)=>{const d=Math.abs(x(i)-px);if(d<bd){bd=d;b=i}});return b};
+  hit.addEventListener("pointermove",e=>at(near(e),e.clientX,e.clientY));hit.addEventListener("pointerdown",e=>at(near(e),e.clientX,e.clientY));
+  hit.addEventListener("pointerleave",()=>{cross.setAttribute("visibility","hidden");hideTip()});hit.addEventListener("blur",()=>{cross.setAttribute("visibility","hidden");hideTip()});
+  hit.addEventListener("focus",()=>at(ki));hit.addEventListener("keydown",e=>{if(e.key==="ArrowLeft"||e.key==="ArrowRight"){e.preventDefault();ki=Math.max(0,Math.min(cats.length-1,ki+(e.key==="ArrowRight"?1:-1)));at(ki)}})}
+// horizontal bars, one colour, value at the tip
+function hbarChart(el,items,fmtv){const W=chartW(el),rowH=26,L=Math.min(130,W*.36),R=40,T=4,H=T+items.length*rowH+4,pw=W-L-R,max=Math.max(1,...items.map(i=>i.v));
+  let m="";items.forEach((it,i)=>{const yy=T+i*rowH,bh=14,by=yy+(rowH-bh)/2,w=Math.max(2,it.v/max*pw),r=Math.min(4,w/2);
+    m+=`<g class="vmark" tabindex="0" data-tt="${tt(it.label,[[it.metric,fmtv(it.v),"--s-us"]].concat(it.extra||[]))}" aria-label="${esc(it.label)} : ${esc(fmtv(it.v))}"><rect x="0" y="${yy}" width="${W}" height="${rowH}" fill="transparent"/>
+      <text class="vlab" x="${L-8}" y="${yy+rowH/2+4}" text-anchor="end">${esc(it.short)}</text>
+      <path d="M${L},${by}H${L+w-r}Q${L+w},${by} ${L+w},${by+r}V${by+bh-r}Q${L+w},${by+bh} ${L+w-r},${by+bh}H${L}Z" fill="var(--s-us)"/>
+      <text class="vval" x="${L+w+6}" y="${yy+rowH/2+4}">${esc(fmtv(it.v))}</text></g>`});
+  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Classement des joueurs"><line class="vgrid" x1="${L}" x2="${L}" y1="${T}" y2="${H-4}" style="stroke:var(--muted)"/>${m}</svg>`;wireMarks(el)}
+function kpi(label,value,sub){return `<div class="kpi"><span>${esc(label)}</span><b>${esc(value)}</b>${sub?`<small>${esc(sub)}</small>`:""}</div>`}
+function rate(a,b){return a+b?a/(a+b)*100:null}
+const pctTxt=v=>v==null?"—":Math.round(v)+" %";
+function renderStatsTab(){
+  hideTip();
+  const all=D.matches.slice().sort((a,b)=>(a.date||"").localeCompare(b.date||"")||(a.at||"").localeCompare(b.at||""));
+  // filter row (scopes everything below)
+  const opts=[["all","Tous les matchs"]].concat(all.length>5?[["last5","5 derniers"]]:[]).concat(all.length>3?[["last3","3 derniers"]]:[]).concat(all.slice().reverse().map(m=>[m.id,shortD(m.date)+" · "+(m.adv||"Adversaire")]));
+  if(!opts.some(o=>o[0]===stScope))stScope="all";
+  $("st-scope").innerHTML=opts.map(([v,l])=>`<option value="${esc(v)}"${v===stScope?" selected":""}>${esc(l)}</option>`).join("");$("st-metric").value=stMetric;
+  $("st-empty").hidden=!!all.length;$("st-body").hidden=!all.length;if(!all.length)return;
+  const ms=stScope==="all"?all:stScope==="last5"?all.slice(-5):stScope==="last3"?all.slice(-3):all.filter(m=>m.id===stScope);
+  const single=ms.length===1;
+  // per-match team totals (old matches brought to the current definitions)
+  const MD=ms.map(m=>{const t=Object.fromEntries(SK.map(k=>[k,0]));(m.rows||[]).forEach(r0=>{const r=normSt(r0,m);SK.forEach(k=>t[k]+=r[k]||0)});
+    const L=isLite(m),pp=possPct(m.poss||{});
+    return{m,L,t,us:m.us||0,them:m.them||0,res:resOf(m),pass:L?null:rate(t.pr,t.pm),duel:L?null:rate(t.dr,t.dm),shot:L?null:rate(t.tr,t.tm),poss:L?null:(pp?pp.us:null),
+      label:cap(shortDate(m.date||today()))+" · "+(m.adv||"Adversaire")+" ("+(m.us||0)+"–"+(m.them||0)+")",tick:shortD(m.date)}});
+  // KPI row
+  const v=MD.filter(x=>x.res==="V").length,n=MD.filter(x=>x.res==="N").length,d=MD.length-v-n,bp=MD.reduce((a,x)=>a+x.us,0),bc=MD.reduce((a,x)=>a+x.them,0);
+  const full=MD.filter(x=>!x.L),T=Object.fromEntries(SK.map(k=>[k,full.reduce((a,x)=>a+x.t[k],0)]));
+  const pm=MD.filter(x=>x.poss!=null),pu=pm.reduce((a,x)=>a+(x.m.poss.us||0),0),pt=pm.reduce((a,x)=>a+(x.m.poss.them||0),0);
+  const sh=T.tr+T.tm;
+  $("st-kpis").innerHTML=kpi("Bilan",v+" – "+n+" – "+d,"victoires – nuls – défaites, sur "+ms.length+" match"+(ms.length>1?"s":""))+
+    kpi("Buts",bp+" – "+bc,"Différence "+(bp-bc>0?"+":"")+(bp-bc)+(ms.length>1?" · "+fmt1(bp/ms.length)+" par match":""))+
+    kpi("Possession",pm.length?pctTxt(pu/(pu+pt)*100):"N/A",pm.length?"sur "+pm.length+" match"+(pm.length>1?"s":"")+" suivi"+(pm.length>1?"s":""):"pas encore mesurée")+
+    kpi("Passes réussies",full.length?pctTxt(rate(T.pr,T.pm)):"N/A",full.length?T.pr+" sur "+(T.pr+T.pm):"")+
+    kpi("Duels gagnés",full.length?pctTxt(rate(T.dr,T.dm)):"N/A",full.length?T.dr+" sur "+(T.dr+T.dm)+" · "+T.rec+" récup.":"")+
+    kpi("Tirs cadrés",full.length?pctTxt(rate(T.tr,T.tm)):"N/A",full.length&&sh?T.tr+" sur "+sh+" · conversion "+Math.round(T.b/sh*100)+" %":"");
+  // charts across matches
+  const multi=!single;
+  ["st-goals-card","st-poss-card","st-rates-card"].forEach(id=>$(id).hidden=!multi);
+  if(multi){
+    $("st-goals-sub").textContent="Sur "+ms.length+" matchs, du "+shortDate(ms[0].date||today())+" au "+shortDate(ms[ms.length-1].date||today())+".";
+    $("st-goals-leg").innerHTML='<span><i style="background:var(--s-us)"></i>Buts marqués</span><span><i style="background:var(--s-them)"></i>Buts encaissés</span>';
+    colChart($("st-goals"),MD,[{name:"Buts marqués",color:"--s-us",vals:MD.map(x=>x.us)},{name:"Buts encaissés",color:"--s-them",vals:MD.map(x=>x.them)}]);
+    $("st-goals-t").innerHTML="<tr><th>Match</th><th>Résultat</th><th>Marqués</th><th>Encaissés</th></tr>"+MD.map(x=>`<tr><td>${esc(x.label)}</td><td>${x.res}</td><td>${x.us}</td><td>${x.them}</td></tr>`).join("");
+    const pv=MD.map(x=>x.poss);
+    if(pv.some(x=>x!=null)){lineChart($("st-poss"),MD,pv,{name:"Notre possession",label:"Possession par match",ref:50,
+      extra:i=>{const p=MD[i].m.poss;return p&&MD[i].poss!=null?[["Adversaire",Math.round(100-MD[i].poss)+" %","--s-them"],["Temps libre",fmt((p.unk||0)*1000),null]]:[]}})}
+    else $("st-poss").innerHTML='<p class="hint" style="margin:6px 0">Pas encore de possession mesurée : elle se remplit avec les matchs saisis avec la nouvelle saisie.</p>';
+    $("st-poss-t").innerHTML="<tr><th>Match</th><th>Notre équipe</th><th>Adversaire</th><th>Ballon libre</th></tr>"+MD.map(x=>{const p=x.m.poss;return `<tr><td>${esc(x.label)}</td><td>${pctTxt(x.poss)}</td><td>${x.poss==null?"N/A":pctTxt(100-x.poss)}</td><td>${p&&x.poss!=null?fmt((p.unk||0)*1000):"N/A"}</td></tr>`}).join("");
+    // small multiples: one rate per chart, same scale, same colour (blue = our team)
+    const R3=[["pass","Passes réussies","pr","pm"],["duel","Duels gagnés","dr","dm"],["shot","Tirs cadrés","tr","tm"]];
+    const box=$("st-rates");box.innerHTML=R3.map(([k,l])=>`<div><h3>${l}</h3><div class="vchart" id="st-r-${k}"></div></div>`).join("");
+    R3.forEach(([k,l,a,b],ri)=>lineChart($("st-r-"+k),MD,MD.map(x=>x[k]),{name:l,label:l+" par match",h:ri===2?120:96,noX:ri<2,ticks:[0,50,100],
+      extra:i=>MD[i].L?[]:[["sur "+(MD[i].t[a]+MD[i].t[b]),String(MD[i].t[a]),null]]}));
+    $("st-rates-t").innerHTML="<tr><th>Match</th><th>Passes</th><th>Duels</th><th>Tirs cadrés</th></tr>"+MD.map(x=>`<tr><td>${esc(x.label)}</td>${R3.map(([k,l,a,b])=>`<td>${x.L?"N/A":pctTxt(x[k])+(x[k]!=null?` <small class="hint">${x.t[a]}/${x.t[a]+x.t[b]}</small>`:"")}</td>`).join("")}</tr>`).join("");
+  }
+  // player ranking: only the figures already public (goals, assists, minutes, matches)
+  const P={};ms.forEach(m=>(m.rows||[]).forEach(r=>{const a=P[r.id]=P[r.id]||{id:r.id,name:rowName(m,r.id),b:0,pd:0,min:0,n:0,mn:0};
+    a.b+=r.b||0;if(!isLite(m)){a.pd+=r.pd||0;a.min+=r.min||0;a.mn++}a.n++}));
+  const ML={b:"Buts",pd:"Passes décisives",ga:"Buts + passes déc.",min:"Minutes jouées",n:"Matchs joués"};
+  const val=a=>stMetric==="ga"?a.b+a.pd:a[stMetric];
+  const list=Object.values(P).map(a=>Object.assign(a,{v:val(a)})).filter(a=>a.v>0).sort((x,y)=>y.v-x.v||x.name.localeCompare(y.name,"fr"));
+  $("st-rank-title").textContent="Classement : "+ML[stMetric].toLowerCase();
+  const liteN=ms.filter(isLite).length;
+  $("st-rank-sub").textContent=(list.length?list.length+" joueur"+(list.length>1?"s":"")+".":"")+((stMetric==="pd"||stMetric==="min"||stMetric==="ga")&&liteN?" Les matchs en « buts seulement » ne comptent pas pour "+(stMetric==="min"?"les minutes":"les passes décisives")+".":"");
+  if(list.length)hbarChart($("st-rank"),list.slice(0,12).map(a=>({label:a.name,short:shortName(a.name),v:a.v,metric:ML[stMetric],extra:[["matchs",String(a.n),null]]})),x=>stMetric==="min"?x+" min":String(x));
+  else $("st-rank").innerHTML='<p class="hint" style="margin:6px 0">Personne pour l\'instant.</p>';
+  $("st-rank-t").innerHTML="<tr><th>Joueur</th><th>Matchs</th><th>Buts</th><th>Passes déc.</th><th>Minutes</th></tr>"+
+    Object.values(P).sort((x,y)=>y.v-x.v||x.name.localeCompare(y.name,"fr")).map(a=>`<tr><td>${esc(a.name)}</td><td>${a.n}</td><td>${a.b}</td><td>${a.pd}</td><td>${a.mn?a.min:"N/A"}</td></tr>`).join("");
+  // my own detailed stats (only for the player himself)
+  const mine=myId?ms.flatMap(m=>(m.rows||[]).filter(r=>r.id===myId).map(r=>({m,r:normSt(r,m)}))):[];
+  $("st-me").hidden=!mine.length;
+  if(mine.length){const mf=mine.filter(x=>!isLite(x.m)),s=Object.fromEntries(SK.map(k=>[k,mf.reduce((a,x)=>a+(x.r[k]||0),0)]));
+    const goals=mine.reduce((a,x)=>a+(x.r.b||0),0),mins=mf.reduce((a,x)=>a+(x.r.min||0),0);
+    $("st-me-sub").textContent=mine.length+" match"+(mine.length>1?"s":"")+" joué"+(mine.length>1?"s":"")+(mf.length?", "+mins+" minutes":"")+".";
+    $("st-me-kpis").innerHTML=kpi("Buts",String(goals),mf.length&&mins?fmt2(goals/mins*60)+" par heure de jeu":"")+kpi("Passes décisives",mf.length?String(s.pd):"N/A","")+
+      kpi("Passes réussies",mf.length?pctTxt(rate(s.pr,s.pm)):"N/A",mf.length?s.pr+" sur "+(s.pr+s.pm):"")+kpi("Duels gagnés",mf.length?pctTxt(rate(s.dr,s.dm)):"N/A",mf.length?s.rec+" récup. · "+s.drb+" dribbles":"")+
+      kpi("Tirs cadrés",mf.length?pctTxt(rate(s.tr,s.tm)):"N/A",mf.length?s.tr+" sur "+(s.tr+s.tm):"")+kpi("Ballons perdus",mf.length?String(s.per):"N/A","")+(s.arr||s.enc?kpi("Gardien",s.arr+" arrêts",s.enc+" buts encaissés"):"")}
+}
+
+/* =====================================================
    NOTES (tickets)
    ===================================================== */
 const NCAT={idee:"Idée",tache:"À faire",probleme:"Problème",info:"Info"};
@@ -1620,7 +1805,7 @@ function renderNotes(){
    RENDER + BOOT
    ===================================================== */
 function render(){
-  ["effectif","calendrier","match","resultats","notes"].forEach(t=>{$("v-"+t).hidden=tab!==t;$("t-"+t).setAttribute("aria-selected",tab===t)});
+  ["effectif","calendrier","match","resultats","stats","notes"].forEach(t=>{$("v-"+t).hidden=tab!==t;$("t-"+t).setAttribute("aria-selected",tab===t)});
   $("matchclock").hidden=tab!=="match";
   $("pad").hidden=!(tab==="match"&&S.sub==="live");
   $("subline").textContent=tab==="match"?((S.adv?"vs "+S.adv:"Adversaire ?")+" · "+frDate(S.date)):"Foot à 7";
@@ -1629,6 +1814,8 @@ function render(){
   if(tab==="calendrier")renderCalendrier();
   if(tab==="match")renderMatch();
   if(tab==="resultats")renderResultats();
+  if(tab==="stats")renderStatsTab();
+  if(tab!=="stats")hideTip();
   if(tab==="notes")renderNotes();
 }
 function listen(path,fn){db.collection(path).onSnapshot(s=>{fn(s.docs.map(d=>Object.assign({id:d.id},d.data())));render()},e=>{if(e&&e.code==="permission-denied"){dbState="denied";render()}})}
