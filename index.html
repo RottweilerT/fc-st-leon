@@ -54,6 +54,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 
 header{display:flex;align-items:center;gap:10px;padding:8px 16px;border-bottom:1px solid var(--line);background:var(--surface)}
 .brand{flex:1;min-width:0}
+.offline{background:var(--gold-bg);color:var(--ink);font-size:12.5px;font-weight:600;padding:6px 16px;border-bottom:1px solid var(--line)}
 /* opening screen when the app is launched from its icon: the crest on football green */
 #splash{display:none;position:fixed;inset:0;z-index:9999;flex-direction:column;align-items:center;justify-content:center;gap:14px;
   background:repeating-linear-gradient(90deg,#1F5C3A 0 12.5vw,#22643F 12.5vw 25vw);color:#fff;transition:opacity .45s ease}
@@ -443,6 +444,7 @@ addEventListener("load",hide);setTimeout(hide,2500)})();</script>
       <button class="clockbtn paused" id="clockbtn" aria-label="Démarrer le chrono">▶</button>
     </div>
   </header>
+  <div class="offline" id="offline" role="status" hidden>Hors connexion : tu vois les données de ta dernière visite. Tes changements partiront dès que le réseau revient.</div>
   <nav class="tabs" role="tablist">
     <button id="t-effectif" role="tab" data-tab="effectif">Effectif</button>
     <button id="t-calendrier" role="tab" data-tab="calendrier">Calendrier</button>
@@ -1804,12 +1806,14 @@ function renderNotes(){
 /* =====================================================
    RENDER + BOOT
    ===================================================== */
+function showOnline(){$("offline").hidden=navigator.onLine!==false}
+addEventListener("online",showOnline);addEventListener("offline",showOnline);
 function render(){
   ["effectif","calendrier","match","resultats","stats","notes"].forEach(t=>{$("v-"+t).hidden=tab!==t;$("t-"+t).setAttribute("aria-selected",tab===t)});
   $("matchclock").hidden=tab!=="match";
   $("pad").hidden=!(tab==="match"&&S.sub==="live");
   $("subline").textContent=tab==="match"?((S.adv?"vs "+S.adv:"Adversaire ?")+" · "+frDate(S.date)):"Foot à 7";
-  renderClock();
+  renderClock();showOnline();
   if(tab==="effectif")renderEffectif();
   if(tab==="calendrier")renderCalendrier();
   if(tab==="match")renderMatch();
