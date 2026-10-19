@@ -937,7 +937,7 @@ $("pin-ask").onsubmit=async e=>{e.preventDefault();const p=playerById(pendingPic
   if(await checkPin(p,$("pin-input").value.trim()))pickAs(p.id);else{$("pin-msg").textContent=lockMsg();$("pin-input").value=""}};
 function clearMeForm(){$("me-form").reset();fillPosSelects(["","",""]);meErr("")}
 $("me-forget").onclick=()=>{myId=null;lss("fcsl-me",null);editingMe=false;armedDel=null;clearMeForm();render()};
-const PUSH={vapid:'',path:id=>'fc_players/'+id,me:()=>myId&&playerById(myId)?myId:'',mot:'une séance',fem:true};
+const PUSH={vapid:'BFByFBcJaAiz1KGI9SeF697tlPiZ787NDpZd2u_5pAz6O4cdvKumnUySt67fRgon13qh4cyv6BttSMeUkZ0TAcM',path:id=>'fc_players/'+id,me:()=>myId&&playerById(myId)?myId:'',mot:'une séance',fem:true};
 /* ----- Sur ton téléphone : installation de l'appli et notifications (même code dans le foot et la boxe) -----
    Le jeton de notification de chaque téléphone est rangé dans la fiche du membre (champ « push »).
    Les envois sont faits par la GitHub Action « Notifications » (séance modifiée ou annulée, rappel du samedi 16 h). */
