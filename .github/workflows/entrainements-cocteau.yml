@@ -1,0 +1,47 @@
+name: Ajouter les entraînements du mardi (Jean Cocteau)
+
+# Ajout ponctuel : entraînement chaque mardi du 27/10 au 29/12/2026, 20 h – 21 h 30, stade Jean Cocteau (Arcueil).
+# Une seule série (« supprimer la série » fonctionne), identifiants fixes : relancer ne crée pas de doublon.
+# Un mardi qui a déjà un entraînement est laissé tel quel (aucune séance existante n'est modifiée).
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ajout:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Écrire les entraînements
+        run: |
+          python3 - <<'PY'
+          import json, re, urllib.request, datetime
+          KEY = re.search(r'apiKey:\s*"([^"]+)"', open("index.html", encoding="utf-8").read()).group(1)
+          base = "https://firestore.googleapis.com/v1/projects/fc-st-leon/databases/(default)/documents/fc_events"
+          d, dates = datetime.date(2026, 10, 27), []
+          while d <= datetime.date(2026, 12, 31):
+              dates.append(d.isoformat()); d += datetime.timedelta(days=7)
+          docs, token = [], ""
+          while True:
+              r = json.load(urllib.request.urlopen(f"{base}?pageSize=300&key={KEY}" + (f"&pageToken={token}" if token else "")))
+              docs += r.get("documents", []); token = r.get("nextPageToken")
+              if not token: break
+          taken = {}
+          for doc in docs:
+              f = doc.get("fields", {}); i = doc["name"].split("/")[-1]
+              if f.get("kind", {}).get("stringValue") == "ent" and not i.startswith("ent-cocteau-"):
+                  taken[f.get("date", {}).get("stringValue")] = (i, f.get("time", {}).get("stringValue", ""), f.get("place", {}).get("stringValue", ""))
+          added = 0
+          for day in dates:
+              if day in taken:
+                  i, t, p = taken[day]; print(f"::notice::{day} : un entraînement existe déjà ({t} {p}), laissé tel quel"); continue
+              fields = {"date": day, "time": "20:00", "end": "21:30", "kind": "ent", "place": "Stade Jean Cocteau · Arcueil", "note": "", "sid": "s-ent-cocteau-2026"}
+              body = {"fields": {k: {"stringValue": v} for k, v in fields.items()}}
+              body["fields"]["rep"] = {"integerValue": "7"}
+              url = f"{base}/ent-cocteau-{day.replace('-', '')}?key={KEY}"
+              urllib.request.urlopen(urllib.request.Request(url, data=json.dumps(body).encode(), method="PATCH", headers={"Content-Type": "application/json"})).read()
+              added += 1
+          print(f"::notice::{added} entraînements écrits ({dates[0]} → {dates[-1]}), {len(dates) - added} mardis déjà occupés")
+          PY
