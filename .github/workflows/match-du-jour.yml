@@ -47,6 +47,8 @@ jobs:
               if not hit:   # first name + start of last name (e.g. "Florent M.", "Guillaume")
                   fn = norm(w.split()[0]); ln = norm(" ".join(w.split()[1:]))
                   hit = [i for i, n in players.items() if norm(n.split()[0] if n.split() else "") == fn and (not n.split()[1:] or ln.startswith(norm(" ".join(n.split()[1:]))) or norm(" ".join(n.split()[1:])).startswith(ln[:3]))]
+              if not hit:   # nickname profile: the only player with that first name (e.g. « François Le BG »)
+                  fn = norm(w.split()[0]); hit = [i for i, n in players.items() if n.split() and norm(n.split()[0]) == fn]
               if len(hit) == 1: found.append((w, hit[0], players[hit[0]]))
               else: missing.append((w, [players[i] for i in hit]))
           print("::notice::Correspondances : " + " ; ".join(f"{w} = {n} ({i})" for w, i, n in found))
