@@ -906,7 +906,7 @@ function goTab(t){tab=t;lss(TK,tab);subMode=false;pick=null;closeMore();render()
 document.querySelectorAll("nav.tabs button[data-tab]").forEach(b=>b.onclick=()=>goTab(b.dataset.tab));
 /* Interface allégée par profil (demande de Maxence du Bourg) : seuls ces onglets restent visibles,
    les autres passent dans le menu « ⋯ ». Clé = identifiant du profil (fc_players). */
-const LIGHT_TABS={"p-muwajm9ypeurbr":["effectif","resultats","stats","notes"]};
+const LIGHT_TABS={"p-muwajm9ypeurbr":["effectif","calendrier","resultats","stats"]};  // Match et Notes dans « ⋯ »
 const TABS=["effectif","calendrier","match","resultats","stats","notes"];
 const TAB_LABEL={effectif:"Effectif",calendrier:"Calendrier",match:"Match",resultats:"Résultats",stats:"Stats",notes:"Notes"};
 function shownTabs(){const k=myId&&LIGHT_TABS[myId];return k?TABS.filter(t=>k.includes(t)):TABS}
