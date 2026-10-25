@@ -1,5 +1,16 @@
 [
   {
+    "id": "n-mvoe086g9hmxz8",
+    "titre": "Tous",
+    "details": "Je souhaite ajouter une fonctionnalité permettant de masquer et réafficher les onglets de navigation de mon application.\n\nFonctionnement souhaité\n\n1. Masquer un onglet\n\n- Un appui long sur un onglet (ou clic droit sur ordinateur) ouvre un menu contextuel.\n- Ce menu propose l'option « Masquer l'onglet ».\n- L'onglet disparaît de la barre principale et rejoint automatiquement un menu secondaire « ⋯ » (trois petits points).\n\n2. Menu des onglets masqués\n\n- Ajouter un bouton « ⋯ » à la fin de la barre de navigation.\n- Ce bouton affiche tous les onglets masqués.\n- Les onglets restent accessibles et fonctionnels depuis ce menu.\n- Si aucun onglet n'est masqué, le bouton « ⋯ » disparaît.\n\n3. Réafficher un onglet\n\n- Un appui long sur un onglet dans le menu « ⋯ » propose « Réafficher l'onglet ».\n- L'onglet retrouve automatiquement sa position initiale dans la barre principale.\n\nRègles importantes\n\n- Sauvegarder les préférences de chaque utilisateur, même après fermeture ou actualisation de l'application.\n- Ne jamais supprimer les données associées aux onglets.\n- Empêcher de masquer le dernier onglet visible.\n- Assurer la compatibilité mobile et ordinateur.\n- Ajouter des animations discrètes et fluides.\n- Préserver le fonctionnement actuel de la navigation.\n\nConsignes de développement\n\nAnalyse la structure existante avant toute modification.\n\nRespecte entièrement le design actuel : couleurs, icônes, disposition et composants.\n\nImplémente directement cette fonctionnalité sans modifier les autres parties de l'application.\n\nObjectif : permettre à chaque utilisateur de personnaliser sa barre de navigation en gardant visibles uniquement ses onglets favoris, les autres restant accessibles via « ⋯ ».",
+    "categorie": "idee",
+    "priorite": 1,
+    "statut": "open",
+    "auteur": "Armand CHARRIN",
+    "cree_le": "2026-10-25T22:16:15.976Z",
+    "modifie_le": "2026-10-25T22:16:15.975Z"
+  },
+  {
     "id": "n-mvoc05i9fn8rei",
     "titre": "Tous",
     "details": "Alléger l’interface de l’application de Maxence du Bourg pour garder que « effectif », « résultats » et « statistiques » et « calendrier »",
@@ -8,17 +19,6 @@
     "statut": "done",
     "auteur": "Maxence du Bourg",
     "cree_le": "2026-10-25T21:20:13.281Z",
-    "modifie_le": "2026-10-25T21:50:41.000Z"
-  },
-  {
-    "id": "n-mvoc0st5iseoun",
-    "titre": "Effectif",
-    "details": "Change le nom de profil de francois le BG en François le moche",
-    "categorie": "idee",
-    "priorite": 1,
-    "statut": "done",
-    "auteur": "Armand CHARRIN",
-    "cree_le": "2026-10-25T21:20:43.481Z",
-    "modifie_le": "2026-10-25T21:41:15.000Z"
+    "modifie_le": "2026-10-25T22:17:16.000Z"
   }
 ]
