@@ -92,6 +92,14 @@ nav.tabs button.tabmore{flex:0 0 auto;padding:10px 12px 9px;font-size:18px;line-
 nav.tabs .moremenu button{flex:none;opacity:1;box-shadow:none;letter-spacing:0;white-space:nowrap;border:0;background:transparent;color:var(--ink);text-align:left;padding:10px 12px;border-radius:8px;font-family:var(--display);font-weight:600;font-size:15px;text-transform:uppercase}
 nav.tabs .moremenu button[aria-current="true"]{background:var(--pitch-soft)}
 .moremenu p{margin:4px 12px 6px;font-size:12px;color:var(--muted)}
+/* onglets personnalisables : appui long (ou clic droit) pour masquer / réafficher */
+nav.tabs button{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+.moremenu:not([hidden]){animation:tabpop .16s ease-out}
+.moremenu.tabctx{right:auto;z-index:31;min-width:0}
+nav.tabs button.tabin{animation:tabin .22s ease-out}
+@keyframes tabpop{from{opacity:0;transform:translateY(-4px) scale(.98)}to{opacity:1;transform:none}}
+@keyframes tabin{from{opacity:0}to{opacity:.82}}
+@media (prefers-reduced-motion:reduce){.moremenu:not([hidden]),nav.tabs button.tabin{animation:none}}
 .subtabs{display:flex;gap:6px;margin-bottom:12px}
 .subtabs button{flex:1;border:1.5px solid var(--line);background:var(--surface);border-radius:999px;padding:8px 6px;font-weight:600;font-size:14px}
 .formband{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 8px;margin:0 -2px 10px;scroll-snap-type:x proximity;scrollbar-width:thin}
@@ -466,6 +474,7 @@ addEventListener("load",hide);setTimeout(hide,2500)})();</script>
     <button id="t-notes" role="tab" data-tab="notes">Notes</button>
     <button id="t-more" class="tabmore" aria-label="Autres onglets" aria-haspopup="true" aria-expanded="false" aria-controls="more-menu" hidden>⋯</button>
     <div class="moremenu" id="more-menu" hidden><p>Autres onglets</p></div>
+    <div class="moremenu tabctx" id="tab-ctx" role="menu" hidden></div>
   </nav>
 
   <!-- EFFECTIF -->
@@ -902,25 +911,53 @@ const wq={};function queue(key,fn){wq[key]=(wq[key]||Promise.resolve()).then(fn,
 
 /* ---------- tabs ---------- */
 let tab=ls(TK,"effectif");if(!["effectif","calendrier","match","resultats","stats","notes"].includes(tab))tab="effectif";
-function goTab(t){tab=t;lss(TK,tab);subMode=false;pick=null;closeMore();render();$("v-"+tab).scrollTop=0;}
-document.querySelectorAll("nav.tabs button[data-tab]").forEach(b=>b.onclick=()=>goTab(b.dataset.tab));
+function goTab(t){tab=t;lss(TK,tab);subMode=false;pick=null;closeMore();closeCtx();render();$("v-"+tab).scrollTop=0;}
+document.querySelectorAll("nav.tabs button[data-tab]").forEach(b=>{b.onclick=e=>{if(lpEat(b)){e.stopPropagation();return}goTab(b.dataset.tab)};onLongPress(b,()=>openTabCtx(b,b.dataset.tab,"hide"))});
 /* Interface allégée par profil (demande de Maxence du Bourg) : seuls ces onglets restent visibles,
    les autres passent dans le menu « ⋯ ». Clé = identifiant du profil (fc_players). */
 const LIGHT_TABS={"p-muwajm9ypeurbr":["effectif","calendrier","resultats","stats"]};  // Match et Notes dans « ⋯ »
 const TABS=["effectif","calendrier","match","resultats","stats","notes"];
 const TAB_LABEL={effectif:"Effectif",calendrier:"Calendrier",match:"Match",resultats:"Résultats",stats:"Stats",notes:"Notes"};
-function shownTabs(){const k=myId&&LIGHT_TABS[myId];return k?TABS.filter(t=>k.includes(t)):TABS}
+/* Onglets masqués par chaque utilisateur (ticket « Tous ») : gardés sur l'appareil, par profil
+   (« _ » quand on n'a pas choisi de profil). Ils prennent le pas sur l'interface allégée ci-dessus. */
+const HTK="fcsl-hidtabs";
+function hidPref(){const all=ls(HTK,{})||{},v=all[myId||"_"];return Array.isArray(v)?v.filter(t=>TABS.includes(t)):null}
+function setHidPref(h){const all=Object.assign({},ls(HTK,{})||{});all[myId||"_"]=h;lss(HTK,all)}
+function shownTabs(){const h=hidPref();if(h){const v=TABS.filter(t=>!h.includes(t));return v.length?v:TABS}
+  const k=myId&&LIGHT_TABS[myId];return k?TABS.filter(t=>k.includes(t)):TABS}
+let tabIn=null;
+function hideTab(t){const v=shownTabs();if(!v.includes(t))return;
+  if(v.length<=1){toast("Garde au moins un onglet visible.");return}
+  setHidPref(TABS.filter(x=>x===t||!v.includes(x)));toast("« "+TAB_LABEL[t]+" » rangé dans ⋯");render()}
+function unhideTab(t){const v=shownTabs();setHidPref(TABS.filter(x=>x!==t&&!v.includes(x)));tabIn=t;closeMore();toast("« "+TAB_LABEL[t]+" » est de retour dans la barre");render()}
+/* appui long sur mobile, clic droit sur ordinateur */
+function onLongPress(el,fn){let tm=null,sx=0,sy=0;const stop=()=>{clearTimeout(tm);tm=null};
+  el.addEventListener("pointerdown",e=>{if(e.pointerType==="mouse")return;sx=e.clientX;sy=e.clientY;stop();
+    tm=setTimeout(()=>{tm=null;el.dataset.lp="1";try{navigator.vibrate&&navigator.vibrate(15)}catch(_){}fn()},550)});
+  el.addEventListener("pointermove",e=>{if(tm&&Math.hypot(e.clientX-sx,e.clientY-sy)>10)stop()});
+  ["pointerup","pointercancel","pointerleave"].forEach(k=>el.addEventListener(k,stop));
+  el.addEventListener("contextmenu",e=>{e.preventDefault();e.stopPropagation();stop();if(el.dataset.lp&&!$("tab-ctx").hidden)return;fn()})}
+function lpEat(el){if(!el.dataset.lp)return false;delete el.dataset.lp;return true}
+function closeCtx(){const c=$("tab-ctx");c.hidden=true;c.innerHTML=""}
+function openTabCtx(btn,t,mode){const c=$("tab-ctx"),nav=btn.closest("nav.tabs");
+  c.innerHTML=`<button type="button" role="menuitem">${mode==="hide"?"Masquer l’onglet":"Réafficher l’onglet"}</button>`;
+  c.firstChild.onclick=e=>{e.stopPropagation();closeCtx();mode==="hide"?hideTab(t):unhideTab(t)};
+  c.hidden=false;const nr=nav.getBoundingClientRect(),br=btn.getBoundingClientRect();
+  c.style.top=(br.bottom-nr.top+4)+"px";
+  c.style.left=Math.max(6,Math.min(br.left-nr.left,nr.width-c.offsetWidth-6))+"px";
+  setTimeout(()=>{const b=c.querySelector("button");b&&b.focus()},0)}
 function closeMore(){$("more-menu").hidden=true;$("t-more").setAttribute("aria-expanded","false")}
 $("t-more").onclick=e=>{e.stopPropagation();const m=$("more-menu"),open=m.hidden;m.hidden=!open;$("t-more").setAttribute("aria-expanded",String(open))};
-document.addEventListener("click",e=>{if(!$("more-menu").hidden&&!e.target.closest("#more-menu"))closeMore()});
-document.addEventListener("keydown",e=>{if(e.key==="Escape")closeMore()});
+document.addEventListener("click",e=>{if(!$("tab-ctx").hidden&&!e.target.closest("#tab-ctx"))closeCtx();if(!$("more-menu").hidden&&!e.target.closest("#more-menu"))closeMore()});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"){closeCtx();closeMore()}});
 function renderTabbar(){const vis=shownTabs(),hid=TABS.filter(t=>!vis.includes(t));let i=0;
   TABS.forEach(t=>{const b=$("t-"+t),on=vis.includes(t);b.hidden=!on;b.classList.toggle("alt",on&&(i++%2===1))});
+  if(tabIn){const b=$("t-"+tabIn);tabIn=null;b.classList.remove("tabin");void b.offsetWidth;b.classList.add("tabin");b.addEventListener("animationend",()=>b.classList.remove("tabin"),{once:true})}
   const mb=$("t-more");mb.hidden=!hid.length;mb.classList.toggle("alt",i%2===1);mb.setAttribute("aria-selected",String(hid.includes(tab)));
   if(!hid.length){closeMore();return}
   const m=$("more-menu"),sig=hid.join(",")+"|"+tab;if(m.dataset.sig===sig)return;m.dataset.sig=sig;
-  m.innerHTML="<p>Autres onglets</p>"+hid.map(t=>`<button type="button" data-go="${t}"${t===tab?' aria-current="true"':""}>${TAB_LABEL[t]}</button>`).join("");
-  m.querySelectorAll("button[data-go]").forEach(b=>b.onclick=e=>{e.stopPropagation();goTab(b.dataset.go)})}
+  m.innerHTML="<p>Autres onglets · appui long pour réafficher</p>"+hid.map(t=>`<button type="button" data-go="${t}"${t===tab?' aria-current="true"':""}>${TAB_LABEL[t]}</button>`).join("");
+  m.querySelectorAll("button[data-go]").forEach(b=>{b.onclick=e=>{e.stopPropagation();if(lpEat(b))return;goTab(b.dataset.go)};onLongPress(b,()=>openTabCtx(b,b.dataset.go,"show"))})}
 
 /* =====================================================
    EFFECTIF
