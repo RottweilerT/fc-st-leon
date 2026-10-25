@@ -1,1 +1,24 @@
-[]
+[
+  {
+    "id": "n-mvoc05i9fn8rei",
+    "titre": "Tous",
+    "details": "Alléger l’interface de l’application de Maxence du Bourg pour garder que « effectif », « résultats » et « statistiques »",
+    "categorie": "idee",
+    "priorite": 2,
+    "statut": "open",
+    "auteur": "Maxence du Bourg",
+    "cree_le": "2026-10-25T21:20:13.281Z",
+    "modifie_le": "2026-10-25T21:23:11.645Z"
+  },
+  {
+    "id": "n-mvoc0st5iseoun",
+    "titre": "Effectif",
+    "details": "Change le nom de profil de francois le BG en François le moche",
+    "categorie": "idee",
+    "priorite": 1,
+    "statut": "open",
+    "auteur": "Armand CHARRIN",
+    "cree_le": "2026-10-25T21:20:43.481Z",
+    "modifie_le": "2026-10-25T21:20:43.480Z"
+  }
+]
