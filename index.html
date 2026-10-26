@@ -498,6 +498,13 @@ addEventListener("load",hide);setTimeout(hide,2500)})();</script>
         <div class="reg-actions"><button class="reg-btn" type="button" id="telOn" hidden>Activer les notifications</button><button class="reg-btn ghost" type="button" id="telOff" hidden>Couper les notifications</button></div>
         <p class="reg-note" id="telMsg" role="status" hidden></p>
       </div>
+      <!-- Déjà inscrit -->
+      <div class="reg-card" id="me-pickrow" hidden>
+        <p class="reg-kicker">Déjà inscrit ?</p>
+        <label class="reg-f" for="me-pick"><span>Choisis ton nom pour retrouver ta fiche sur ce téléphone</span><select id="me-pick"></select></label>
+        <form id="pin-ask" class="reg-inline" hidden><input type="password" id="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="8" autocomplete="current-password" placeholder="Code d'accès" aria-label="Code d'accès"><button class="reg-btn" type="submit">Valider</button></form>
+        <p class="reg-note" id="pin-msg" hidden></p>
+      </div>
       <!-- Formulaire : inscription ou modification -->
       <form class="reg-card" id="me-form" novalidate autocomplete="off">
         <p class="reg-kicker">FC St Léon</p>
@@ -531,13 +538,6 @@ addEventListener("load",hide);setTimeout(hide,2500)})();</script>
         <p class="reg-err" id="me-err" role="alert" hidden></p>
         <div class="reg-actions"><button class="reg-btn" type="submit" id="me-submit">Je m'inscris</button><button class="reg-btn ghost" type="button" id="me-cancel" hidden>Annuler</button></div>
       </form>
-      <!-- Déjà inscrit -->
-      <div class="reg-card" id="me-pickrow" hidden>
-        <p class="reg-kicker">Déjà inscrit ?</p>
-        <label class="reg-f" for="me-pick"><span>Choisis ton nom pour retrouver ta fiche sur ce téléphone</span><select id="me-pick"></select></label>
-        <form id="pin-ask" class="reg-inline" hidden><input type="password" id="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="8" autocomplete="current-password" placeholder="Code d'accès" aria-label="Code d'accès"><button class="reg-btn" type="submit">Valider</button></form>
-        <p class="reg-note" id="pin-msg" hidden></p>
-      </div>
     </section>
     <div class="card" id="coach-add" hidden>
       <h2>Inscrire un autre joueur</h2>
