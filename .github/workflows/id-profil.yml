@@ -1,0 +1,19 @@
+name: Identifiant d'un profil (lecture seule)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  lire:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python3 - <<'PY'
+          import json, re, urllib.request
+          KEY = re.search(r'apiKey:\s*"([^"]+)"', open("index.html", encoding="utf-8").read()).group(1)
+          r = json.load(urllib.request.urlopen(f"https://firestore.googleapis.com/v1/projects/fc-st-leon/databases/(default)/documents/fc_players?pageSize=300&key={KEY}"))
+          for d in r.get("documents", []):
+              f = d.get("fields", {}); n = (f.get("first", {}).get("stringValue", "") + " " + f.get("last", {}).get("stringValue", "")).strip()
+              if n.lower().startswith("armand"): print(f"::notice::{n} = {d['name'].split('/')[-1]}")
+          PY
