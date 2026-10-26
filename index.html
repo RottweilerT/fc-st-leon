@@ -53,6 +53,27 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .app{height:100%;display:flex;flex-direction:column;max-width:760px;margin:0 auto}
 .num{font-variant-numeric:tabular-nums}
 
+/* DA « pontificale » (profil d'Armand Charrin) : rouge = dignité pontificale, courage, défense de la foi ;
+   blanc = sainteté, pureté, lumière ; or = gloire, sagesse, autorité spirituelle. Le terrain reste vert. */
+:root[data-da="pontifical"]{
+  --bg:#FAF6EE; --surface:#FFFFFF; --ink:#2B1215; --muted:#73605A; --line:#E6D8BF;
+  --pitch:#9E1B32; --pitch-ink:#FFFFFF; --pitch-soft:#F7E4E4;
+  --gold:#8C6A12; --gold-bg:#F6ECD0; --da-gold:#C9A227;
+  --tab-a:#FFFFFF; --tab-a-ink:#7E1428; --tab-a-mark:#C9A227; --tab-b:#9E1B32; --tab-b-ink:#FFFFFF; --tab-b-mark:#E6C35C; --we-bg:#FBF3DF; --we-line:#E6D3A3; --we-ink:#7A5B0E}
+@media (prefers-color-scheme: dark){:root[data-da="pontifical"]:not([data-theme="light"]){
+  --bg:#170D0F; --surface:#241417; --ink:#F4ECE6; --muted:#B9A49C; --line:#3E2A28;
+  --pitch:#E8798A; --pitch-ink:#2A0E13; --pitch-soft:#3A1A1F;
+  --gold:#E2C064; --gold-bg:#3A2E14; --da-gold:#E2C064;
+  --tab-a:#241417; --tab-a-ink:#F4ECE6; --tab-a-mark:#E2C064; --tab-b:#B8304A; --tab-b-ink:#FFFFFF; --tab-b-mark:#E2C064; --we-bg:#2E2414; --we-line:#4A3A1E; --we-ink:#E2C064; color-scheme:dark}}
+:root[data-theme="dark"][data-da="pontifical"]{
+  --bg:#170D0F; --surface:#241417; --ink:#F4ECE6; --muted:#B9A49C; --line:#3E2A28;
+  --pitch:#E8798A; --pitch-ink:#2A0E13; --pitch-soft:#3A1A1F;
+  --gold:#E2C064; --gold-bg:#3A2E14; --da-gold:#E2C064;
+  --tab-a:#241417; --tab-a-ink:#F4ECE6; --tab-a-mark:#E2C064; --tab-b:#B8304A; --tab-b-ink:#FFFFFF; --tab-b-mark:#E2C064; --we-bg:#2E2414; --we-line:#4A3A1E; --we-ink:#E2C064}
+:root[data-da="pontifical"] header{border-bottom:3px solid var(--da-gold)}
+:root[data-da="pontifical"] .brand h1{color:var(--pitch)}
+:root[data-da="pontifical"] .card h2,:root[data-da="pontifical"] .section-label{color:var(--gold)}
+:root[data-da="pontifical"] .card{border-top:2px solid var(--da-gold)}
 header{display:flex;align-items:center;gap:10px;padding:8px 16px;border-bottom:1px solid var(--line);background:var(--surface)}
 .brand{flex:1;min-width:0}
 .offline{background:var(--gold-bg);color:var(--ink);font-size:12.5px;font-weight:600;padding:6px 16px;border-bottom:1px solid var(--line)}
@@ -923,6 +944,11 @@ const TAB_LABEL={effectif:"Effectif",calendrier:"Calendrier",match:"Match",resul
 const HTK="fcsl-hidtabs";
 function hidPref(){const all=ls(HTK,{})||{},v=all[myId||"_"];return Array.isArray(v)?v.filter(t=>TABS.includes(t)):null}
 function setHidPref(h){const all=Object.assign({},ls(HTK,{})||{});all[myId||"_"]=h;lss(HTK,all)}
+/* direction artistique par profil (clé = identifiant fc_players) */
+const PROFILE_DA={"p-muvufk30ovx1m1":{da:"pontifical",bar:"#9E1B32"}};
+function applyDA(){const d=myId&&PROFILE_DA[myId],el=document.documentElement,mc=document.querySelector('meta[name="theme-color"]');
+  if(d){if(el.dataset.da!==d.da)el.dataset.da=d.da}else if(el.dataset.da)delete el.dataset.da;
+  if(mc)mc.setAttribute("content",d?d.bar:"#1F5C3A")}
 function shownTabs(){const h=hidPref();if(h){const v=TABS.filter(t=>!h.includes(t));return v.length?v:TABS}
   const k=myId&&LIGHT_TABS[myId];return k?TABS.filter(t=>k.includes(t)):TABS}
 let tabIn=null;
@@ -1960,7 +1986,7 @@ function renderNotes(){
 function showOnline(){$("offline").hidden=navigator.onLine!==false}
 addEventListener("online",showOnline);addEventListener("offline",showOnline);
 function render(){
-  renderTabbar();
+  applyDA();renderTabbar();
   ["effectif","calendrier","match","resultats","stats","notes"].forEach(t=>{$("v-"+t).hidden=tab!==t;$("t-"+t).setAttribute("aria-selected",tab===t)});
   $("matchclock").hidden=tab!=="match";
   $("pad").hidden=!(tab==="match"&&S.sub==="live");
