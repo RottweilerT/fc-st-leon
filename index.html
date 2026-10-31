@@ -464,6 +464,40 @@ ol.steps{margin:0 0 14px;padding-left:20px} ol.steps li{margin-bottom:4px}
 @media (max-width:480px){.reg-grid3{grid-template-columns:1fr}}
 @media (max-width:360px){.reg-grid{grid-template-columns:1fr}}
 .reg{--reg-accent:var(--pitch);--reg-on-accent:var(--pitch-ink);--reg-soft:var(--pitch-soft);--reg-surface:var(--surface);--reg-field:var(--bg);--reg-line:var(--line);--reg-ink:var(--ink);--reg-muted:var(--muted);--reg-kicker:var(--pitch);--reg-danger:var(--bad);--reg-danger-soft:var(--bad-bg);--reg-display:var(--display);--reg-body:var(--body);--reg-r:12px;margin-bottom:14px}
+/* Vue semaine (samedi → vendredi) */
+.wk{padding:12px 12px 4px}
+.wkhead{display:flex;align-items:center;gap:8px}
+.wkt{flex:1;text-align:center;min-width:0}
+.wkk{display:block;font-family:var(--display);font-weight:600;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.card .wkt h2{margin:0;font-family:var(--display);font-weight:700;font-size:18px;letter-spacing:0;text-transform:none;color:var(--ink)}
+.wktoday{display:block;margin:8px auto 0}
+.wkday{display:grid;grid-template-columns:62px minmax(0,1fr);gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+.wkday:first-child{margin-top:10px}
+.wkd b{display:block;font-family:var(--display);font-weight:700;font-size:15px;text-transform:uppercase;line-height:1.1}
+.wkd span{font-size:13px;color:var(--muted)}
+.wkday.we .wkd b{color:var(--we-ink)}
+.wkday.today .wkd b{color:var(--pitch)}
+.wkday.today .wkd span::after{content:"aujourd'hui";display:block;font-size:11px;font-weight:600;color:var(--pitch)}
+.wkday.none{padding:7px 0}
+.wknone{color:var(--muted);font-size:13px;align-self:center}
+.wkevs{display:grid;gap:8px;min-width:0}
+.wkev{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px;display:grid;gap:7px;min-width:0}
+.wkev .evtop{margin:0}
+.wkev .evtop b{font-size:16px}
+.wkplace{font-size:13px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.wkwho{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+.wklbl{font-size:12px;font-weight:700;color:var(--muted);margin-right:2px;text-transform:uppercase;letter-spacing:.04em}
+.wkchip{font-size:12.5px;padding:2px 8px;border-radius:999px;background:var(--good-bg);color:var(--good);font-weight:600;white-space:nowrap}
+.wkchip.m{background:var(--gold-bg);color:var(--gold)}
+.wkchip.me{box-shadow:inset 0 0 0 1.5px currentColor}
+.wkempty{font-size:13px;color:var(--muted)}
+.wkfoot{font-size:12px;color:var(--muted)}
+.wkstate{font-size:12.5px;font-weight:700;display:flex;align-items:center;gap:6px}
+.wkstate::before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor;flex:none}
+.wkstate.open{color:var(--good)}
+.wkstate.closed{color:var(--muted)}
+.wkev .seg{margin:0}
+@media (prefers-reduced-motion:no-preference){#wk-days{transition:opacity .15s}#wk-days.wkfade{opacity:.35}}
 </style>
 
 </head>
@@ -578,6 +612,16 @@ addEventListener("load",hide);setTimeout(hide,2500)})();</script>
 
   <!-- CALENDRIER -->
   <main id="v-calendrier" hidden>
+    <!-- Vue semaine : du samedi au vendredi, qui est inscrit et si l'on peut encore s'inscrire -->
+    <div class="card wk" id="wk">
+      <div class="wkhead">
+        <button class="navbtn" id="wk-prev" aria-label="Semaine précédente">‹</button>
+        <div class="wkt"><span class="wkk">Semaine</span><h2 id="wk-title"></h2></div>
+        <button class="navbtn" id="wk-next" aria-label="Semaine suivante">›</button>
+      </div>
+      <button class="mini wktoday" id="wk-today" hidden>Revenir à cette semaine</button>
+      <div id="wk-days"></div>
+    </div>
     <div class="calhead">
       <button class="navbtn" id="mprev" aria-label="Mois précédent">‹</button>
       <h2 id="mtitle"></h2>
@@ -1233,7 +1277,42 @@ function eventHTML(ev){
   }else if(isCoach)h+=`<div class="evactions">${evButtons(ev)}</div>`+delConfirm(ev);
   return h+`</div>`}
 
+/* ---------- Vue semaine : du samedi au vendredi ----------
+   Pour chaque jour : les séances, qui est inscrit (présents, peut-être), et si l'on peut encore répondre. */
+let wkStart=null;
+function wkSat(s){const d=parseYmd(s);d.setDate(d.getDate()-((d.getDay()+1)%7));return ymd(d)}
+function wkAdd(s,n){const d=parseYmd(s);d.setDate(d.getDate()+n);return ymd(d)}
+function wkName(p){return (p.first||"")+(p.last?" "+p.last.charAt(0)+".":"")}
+function renderSemaine(){
+  const t=today();if(!wkStart)wkStart=wkSat(t);
+  const a=parseYmd(wkStart),b=parseYmd(wkAdd(wkStart,6)),f=(d,o)=>d.toLocaleDateString("fr-FR",o);
+  $("wk-title").textContent=a.getMonth()===b.getMonth()?`Du ${a.getDate()} au ${b.getDate()} ${f(b,{month:"long"})}`:`Du ${a.getDate()} ${f(a,{month:"short"})} au ${b.getDate()} ${f(b,{month:"short"})}`;
+  $("wk-today").hidden=wkStart===wkSat(t);
+  if(dbState!=="on"){$("wk-days").innerHTML='<div class="empty" style="margin:10px 0">Séances indisponibles pour le moment.</div>';return}
+  const me=myId&&playerById(myId),ps=sortPlayers(D.players);let h="";
+  for(let i=0;i<7;i++){const s=wkAdd(wkStart,i),d=parseYmd(s),evs=sortedEvents(D.events.filter(e=>e.date===s&&e.kind!=="note"));
+    h+=`<div class="wkday${s===t?" today":""}${d.getDay()===0||d.getDay()===6?" we":""}${evs.length?"":" none"}"><div class="wkd"><b>${f(d,{weekday:"short"}).replace(".","")}</b><span class="num">${d.getDate()} ${f(d,{month:"short"})}</span></div><div class="wkevs">`;
+    if(!evs.length)h+=`<span class="wknone">Pas de séance</span>`;
+    evs.forEach(ev=>{const by={p:[],a:[],m:[],n:[]};ps.forEach(p=>by[answer(p.id,ev.id)||"n"].push(p));const past=ev.date<t;
+      const chips=(l,c)=>l.map(p=>`<span class="wkchip ${c}${p.id===myId?" me":""}">${esc(wkName(p))}</span>`).join("");
+      h+=`<div class="wkev"><div class="evtop"><span class="kpill ${ev.kind}">${KINDS[ev.kind]||"Séance"}</span><b class="num">${esc(timeRange(ev))}</b>${ev.place?`<span class="wkplace">${esc(ev.place)}</span>`:""}</div>`;
+      h+=`<div class="wkwho"><span class="wklbl">${past?"Présents":"Inscrits"} ${by.p.length}</span>${by.p.length?chips(by.p,"p"):`<span class="wkempty">Personne pour l’instant</span>`}</div>`;
+      if(by.m.length)h+=`<div class="wkwho"><span class="wklbl">Peut-être ${by.m.length}</span>${chips(by.m,"m")}</div>`;
+      h+=`<div class="wkfoot num">${by.a.length} absent${by.a.length>1?"s":""} · ${by.n.length} sans réponse</div>`;
+      if(past)h+=`<div class="wkstate closed">Séance passée : inscriptions fermées</div>`;
+      else if(me)h+=`<div class="wkstate open">Inscriptions ouvertes · ta réponse</div>`+segHTML(myId,ev.id);
+      else h+=`<div class="wkstate open">Inscriptions ouvertes · choisis ton nom dans Effectif pour répondre</div>`;
+      h+=`</div>`});
+    h+=`</div></div>`}
+  $("wk-days").innerHTML=h;
+}
+function wkGo(s){const el=$("wk-days");wkStart=s;el.classList.add("wkfade");setTimeout(()=>{renderSemaine();el.classList.remove("wkfade")},120)}
+$("wk-prev").onclick=()=>wkGo(wkAdd(wkStart||wkSat(today()),-7));
+$("wk-next").onclick=()=>wkGo(wkAdd(wkStart||wkSat(today()),7));
+$("wk-today").onclick=()=>wkGo(wkSat(today()));
+$("wk-days").onclick=e=>{const b=e.target.closest("button[data-ans]");if(b)setAnswer(b.dataset.pid,b.dataset.ev,b.dataset.ans)};
 function renderCalendrier(){
+  renderSemaine();
   $("mtitle").textContent=calMonth.toLocaleDateString("fr-FR",{month:"long",year:"numeric"});
   const byDay={};D.events.forEach(ev=>{(byDay[ev.date]=byDay[ev.date]||[]).push(ev)});
   const first=new Date(calMonth);const offset=(first.getDay()+6)%7;const start=new Date(first);start.setDate(1-offset);
