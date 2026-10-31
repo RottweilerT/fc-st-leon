@@ -464,7 +464,7 @@ ol.steps{margin:0 0 14px;padding-left:20px} ol.steps li{margin-bottom:4px}
 @media (max-width:480px){.reg-grid3{grid-template-columns:1fr}}
 @media (max-width:360px){.reg-grid{grid-template-columns:1fr}}
 .reg{--reg-accent:var(--pitch);--reg-on-accent:var(--pitch-ink);--reg-soft:var(--pitch-soft);--reg-surface:var(--surface);--reg-field:var(--bg);--reg-line:var(--line);--reg-ink:var(--ink);--reg-muted:var(--muted);--reg-kicker:var(--pitch);--reg-danger:var(--bad);--reg-danger-soft:var(--bad-bg);--reg-display:var(--display);--reg-body:var(--body);--reg-r:12px;margin-bottom:14px}
-/* Vue semaine (samedi → vendredi) */
+/* Vue semaine (dimanche → samedi) */
 .wk{padding:12px 12px 4px}
 .wkhead{display:flex;align-items:center;gap:8px}
 .wkt{flex:1;text-align:center;min-width:0}
@@ -612,7 +612,7 @@ addEventListener("load",hide);setTimeout(hide,2500)})();</script>
 
   <!-- CALENDRIER -->
   <main id="v-calendrier" hidden>
-    <!-- Vue semaine : du samedi au vendredi, qui est inscrit et si l'on peut encore s'inscrire -->
+    <!-- Vue semaine : du dimanche au samedi, qui est inscrit et si l'on peut encore s'inscrire -->
     <div class="card wk" id="wk">
       <div class="wkhead">
         <button class="navbtn" id="wk-prev" aria-label="Semaine précédente">‹</button>
@@ -1277,17 +1277,17 @@ function eventHTML(ev){
   }else if(isCoach)h+=`<div class="evactions">${evButtons(ev)}</div>`+delConfirm(ev);
   return h+`</div>`}
 
-/* ---------- Vue semaine : du samedi au vendredi ----------
+/* ---------- Vue semaine : du dimanche au samedi ----------
    Pour chaque jour : les séances, qui est inscrit (présents, peut-être), et si l'on peut encore répondre. */
 let wkStart=null;
-function wkSat(s){const d=parseYmd(s);d.setDate(d.getDate()-((d.getDay()+1)%7));return ymd(d)}
+function wkSun(s){const d=parseYmd(s);d.setDate(d.getDate()-d.getDay());return ymd(d)}
 function wkAdd(s,n){const d=parseYmd(s);d.setDate(d.getDate()+n);return ymd(d)}
 function wkName(p){return (p.first||"")+(p.last?" "+p.last.charAt(0)+".":"")}
 function renderSemaine(){
-  const t=today();if(!wkStart)wkStart=wkSat(t);
+  const t=today();if(!wkStart)wkStart=wkSun(t);
   const a=parseYmd(wkStart),b=parseYmd(wkAdd(wkStart,6)),f=(d,o)=>d.toLocaleDateString("fr-FR",o);
   $("wk-title").textContent=a.getMonth()===b.getMonth()?`Du ${a.getDate()} au ${b.getDate()} ${f(b,{month:"long"})}`:`Du ${a.getDate()} ${f(a,{month:"short"})} au ${b.getDate()} ${f(b,{month:"short"})}`;
-  $("wk-today").hidden=wkStart===wkSat(t);
+  $("wk-today").hidden=wkStart===wkSun(t);
   if(dbState!=="on"){$("wk-days").innerHTML='<div class="empty" style="margin:10px 0">Séances indisponibles pour le moment.</div>';return}
   const me=myId&&playerById(myId),ps=sortPlayers(D.players);let h="";
   for(let i=0;i<7;i++){const s=wkAdd(wkStart,i),d=parseYmd(s),evs=sortedEvents(D.events.filter(e=>e.date===s&&e.kind!=="note"));
@@ -1307,9 +1307,9 @@ function renderSemaine(){
   $("wk-days").innerHTML=h;
 }
 function wkGo(s){const el=$("wk-days");wkStart=s;el.classList.add("wkfade");setTimeout(()=>{renderSemaine();el.classList.remove("wkfade")},120)}
-$("wk-prev").onclick=()=>wkGo(wkAdd(wkStart||wkSat(today()),-7));
-$("wk-next").onclick=()=>wkGo(wkAdd(wkStart||wkSat(today()),7));
-$("wk-today").onclick=()=>wkGo(wkSat(today()));
+$("wk-prev").onclick=()=>wkGo(wkAdd(wkStart||wkSun(today()),-7));
+$("wk-next").onclick=()=>wkGo(wkAdd(wkStart||wkSun(today()),7));
+$("wk-today").onclick=()=>wkGo(wkSun(today()));
 $("wk-days").onclick=e=>{const b=e.target.closest("button[data-ans]");if(b)setAnswer(b.dataset.pid,b.dataset.ev,b.dataset.ans)};
 function renderCalendrier(){
   renderSemaine();
