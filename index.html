@@ -289,10 +289,6 @@ label.sub{font-weight:500;font-size:12px}
 .sheet .seg button{padding:6px 2px;font-size:13px}
 .rep{font-size:12.5px;font-weight:600;color:var(--muted)}
 .evactions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
-.upcoming{list-style:none;margin:0 0 14px;padding:0;display:flex;flex-direction:column;gap:6px}
-.upcoming button{width:100%;display:flex;align-items:center;gap:10px;text-align:left;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:9px 12px}
-.upcoming .d{font-family:var(--display);font-weight:700;font-size:16px;min-width:88px}
-.upcoming .t{flex:1;min-width:0;color:var(--muted);font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 /* pitch */
 .pitch{position:relative;display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(6,auto);gap:3px 4px;padding:10px 6px;border-radius:12px;border:2px solid var(--chalk);overflow:hidden;margin-bottom:14px;
@@ -657,8 +653,6 @@ addEventListener("load",hide);setTimeout(hide,2500)})();</script>
         </div>
       </form>
     </div>
-    <div class="section-label"><span>Prochaines séances</span></div>
-    <div id="upcoming"></div>
   </main>
 
   <!-- MATCH -->
@@ -1202,7 +1196,6 @@ $("mprev").onclick=()=>{calMonth=new Date(calMonth.getFullYear(),calMonth.getMon
 $("mnext").onclick=()=>{calMonth=new Date(calMonth.getFullYear(),calMonth.getMonth()+1,1);render()};
 $("cal").onclick=e=>{const b=e.target.closest(".day");if(!b)return;selDay=b.dataset.d;const d=parseYmd(selDay);
   if(d.getMonth()!==calMonth.getMonth())calMonth=new Date(d.getFullYear(),d.getMonth(),1);if(!editingEv){$("ev-date").value=selDay;updatePreview()}render()};
-$("upcoming").onclick=e=>{const b=e.target.closest("button[data-d]");if(!b)return;selDay=b.dataset.d;const d=parseYmd(selDay);calMonth=new Date(d.getFullYear(),d.getMonth(),1);if(!editingEv){$("ev-date").value=selDay;updatePreview()}render();$("v-calendrier").scrollTop=0};
 const REP_LABEL={7:"chaque semaine",14:"toutes les 2 semaines"};
 let editingEv=null;
 function seasonEnd(){const d=new Date();const y=d.getMonth()>=6?d.getFullYear()+1:d.getFullYear();return y+"-06-30"}
@@ -1328,9 +1321,6 @@ function renderCalendrier(){
   $("ev-add").hidden=!(dbState==="on"&&isCoach);
   if(!$("ev-date").value)$("ev-date").value=selDay;
   if(!editingEv)$("ev-date-lbl").textContent=+$("ev-rep").value?"Première séance":"Date";
-  const up=sortedEvents(D.events.filter(ev=>ev.date>=t)).slice(0,6);
-  $("upcoming").innerHTML=up.length?'<ul class="upcoming">'+up.map(ev=>{const me=myId&&playerById(myId);const a=me?answer(myId,ev.id):"";
-    return `<li><button data-d="${ev.date}"><span class="d">${esc(cap(shortDate(ev.date)))}</span><span class="t">${KINDS[ev.kind]||""}${ev.time?" · "+esc(timeRange(ev)):""}${ev.place?" · "+esc(ev.place):""}</span>${me?`<span class="kpill ${a==="p"?"ent":a==="a"?"":a==="m"?"match":"autre"}" style="${a==="a"?"background:var(--bad-bg);color:var(--bad)":""}">${a?ANS[a]:"À répondre"}</span>`:""}</button></li>`}).join("")+"</ul>":'<div class="empty">Aucune séance prévue.</div>';
 }
 
 /* =====================================================
