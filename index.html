@@ -494,6 +494,22 @@ ol.steps{margin:0 0 14px;padding-left:20px} ol.steps li{margin-bottom:4px}
 .wkstate.closed{color:var(--muted)}
 .wkev .seg{margin:0}
 @media (prefers-reduced-motion:no-preference){#wk-days{transition:opacity .15s}#wk-days.wkfade{opacity:.35}}
+/* Profil activé / désactivé : un profil désactivé n'est plus attendu pour les présences */
+.reg-toggle{display:flex;gap:12px;align-items:flex-start;padding:10px 12px;border:1px solid var(--reg-line);border-radius:10px;background:var(--reg-field)}
+.reg-switch{position:relative;flex:none;width:44px;height:26px;margin:2px 0 0;display:block}
+.reg-switch input{position:absolute;inset:0;width:100%;height:100%;opacity:0;margin:0;cursor:pointer;z-index:1}
+.reg-switch span{position:absolute;inset:0;border-radius:999px;background:var(--reg-line);transition:background-color .2s}
+.reg-switch span::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:var(--reg-surface);box-shadow:0 1px 3px rgba(0,0,0,.3);transition:transform .2s}
+.reg-switch input:checked+span{background:var(--reg-accent)}
+.reg-switch input:checked+span::after{transform:translateX(18px)}
+.reg-switch input:focus-visible+span{outline:2px solid var(--reg-accent);outline-offset:2px}
+.reg-switch input:disabled{cursor:wait}
+.reg-toggle b{display:block;font-size:.95rem;color:var(--reg-ink)}
+.reg-toggle .reg-line{margin-top:2px}
+@media (prefers-reduced-motion:reduce){.reg-switch span,.reg-switch span::after{transition:none}}
+.plist li.off .nm b,.plist li.off .av{opacity:.5}
+.tag.off{background:var(--line);color:var(--muted)}
+.sr.off span{opacity:.55}
 </style>
 
 </head>
@@ -538,6 +554,7 @@ addEventListener("load",hide);setTimeout(hide,2500)})();</script>
         <div class="reg-who"><span class="reg-avatar" id="me-avatar" aria-hidden="true"></span>
           <div style="min-width:0"><div class="reg-name" id="me-name"></div><div class="reg-line" id="me-prof"></div><div class="reg-line" id="me-att"></div><span class="reg-badge" id="me-lock"></span></div></div>
         <div class="reg-actions"><button class="reg-btn ghost" type="button" id="me-edit">Modifier</button><button class="reg-btn ghost" type="button" id="me-forget">Ce n'est pas moi</button><button class="reg-btn danger" type="button" id="me-del">Me désinscrire</button></div>
+        <div class="reg-toggle"><label class="reg-switch" for="me-active"><input type="checkbox" id="me-active" role="switch"><span></span></label><div><b id="me-active-t">Profil activé</b><span class="reg-line" id="me-active-h"></span></div></div>
         <p class="reg-note" id="me-del-note" hidden>Ta fiche et tes réponses aux séances seront effacées. Touche encore pour confirmer.</p>
       </div>
       <!-- Sur ton téléphone : installation et notifications -->
@@ -1144,11 +1161,19 @@ $("plist").addEventListener("submit",async e=>{const f=e.target.closest("form[da
   const p=playerById(f.dataset.pindel);if(!p)return;const code=f.querySelector("input").value.trim();
   if(!(await checkPin(p,code))){toast(lockMsg());f.querySelector("input").value="";return}
   armedDel=null;try{await db.doc("fc_players/"+p.id).delete();db.doc("fc_rsvp/"+p.id).delete().catch(()=>{});toast("Joueur retiré.")}catch(err){toast(errMsg(err))}render()});
+$("plist").addEventListener("click",e=>{const b=e.target.closest("button[data-off]");if(b){const p=playerById(b.dataset.off);if(p)setOff(p.id,!isOff(p))}});
 $("plist").onclick=async e=>{const b=e.target.closest("button[data-del]");if(!b)return;const id=b.dataset.del;const p=playerById(id);
   if(p&&p.pinHash&&id!==myId){armedDel=armedDel===id?null:id;render();if(armedDel){const inp=document.querySelector('form[data-pindel="'+id+'"] input');if(inp)inp.focus()}return}
   if(armedDel!==id){armedDel=id;render();setTimeout(()=>{if(armedDel===id){armedDel=null;render()}},3000);return}
   armedDel=null;try{await db.doc("fc_players/"+id).delete();if(D.rsvp[id])db.doc("fc_rsvp/"+id).delete().catch(()=>{});toast("Joueur retiré.")}catch(err){toast(errMsg(err))}render();};
 
+/* Profil activé / désactivé (champ « off » de la fiche) : un profil désactivé n'est pas attendu pour les présences
+   (il ne compte pas dans « sans réponse » et ne reçoit pas le rappel du samedi), mais il peut toujours répondre. */
+const isOff=p=>!!(p&&p.off);
+async function setOff(id,off){const p=playerById(id);if(!p)return;p.off=off;render();
+  try{await queue("fc_players/"+id,()=>db.doc("fc_players/"+id).set({off},{merge:true}));toast(off?full(p)+" : profil désactivé":full(p)+" : profil activé")}
+  catch(err){p.off=!off;render();toast(errMsg(err))}}
+$("me-active").onchange=e=>{if(myId)setOff(myId,!e.target.checked)};
 function pastEvents(){const t=today();return D.events.filter(ev=>ev.date<=t)}
 function attendance(pid){const past=pastEvents();let p=0;past.forEach(ev=>{if(answer(pid,ev.id)==="p")p++});return[p,past.length]}
 
@@ -1168,6 +1193,8 @@ function renderEffectif(){
     $("me-prof").textContent=[me.num?"Maillot n° "+me.num:"",posText(me)?"Postes : "+posText(me):""].filter(Boolean).join(" · ")||"Ajoute ton numéro de maillot et tes postes avec « Modifier ».";
     {const[a,n]=attendance(me.id);$("me-att").textContent=n?`Présences : ${a} séance${a>1?"s":""} sur ${n} (visible seulement par toi)`:"Pas encore de séance passée.";}
     $("me-lock").textContent=me.pinHash?"Protégé par un code":"Sans code d'accès";
+    $("me-active").checked=!isOff(me);$("me-active-t").textContent=isOff(me)?"Profil désactivé":"Profil activé";
+    $("me-active-h").textContent=isOff(me)?"On n\u2019attend pas ta réponse aux séances et tu ne reçois plus le rappel du samedi. Tu peux quand même répondre.":"On compte sur ta réponse pour chaque séance. Désactive ton profil si tu fais une pause (blessure, vacances…).";
     $("me-del").textContent=armedDel==="me"?"Confirmer la désinscription":"Me désinscrire";$("me-del").classList.toggle("armed",armedDel==="me");$("me-del-note").hidden=armedDel!=="me";}
   else{$("me-done").hidden=true;$("me-form").hidden=false;$("me-title").textContent=me?"Modifier mon inscription":"Je m'inscris";
     $("me-lead").textContent=me?"Change ce que tu veux puis enregistre.":"Une seule fois, depuis ton téléphone. Ensuite tu réponds aux séances et aux matchs en un geste.";
@@ -1177,15 +1204,16 @@ function renderEffectif(){
   $("telCard").hidden=!(me&&!editingMe);Tel.render();Tel.sync();
   $("coach-add").hidden=!(dbState==="on"&&isCoach);
   const list=sortPlayers(D.players);
-  $("pcount").textContent=list.length?list.length+" joueur"+(list.length>1?"s":""):"";
+  {const off=list.filter(isOff).length;$("pcount").textContent=list.length?list.length+" joueur"+(list.length>1?"s":"")+(off?" · "+off+" désactivé"+(off>1?"s":""):""):"";}
   if(dbState!=="on"){$("plist").innerHTML="";return}
   if(!list.length){$("plist").innerHTML='<div class="empty">Personne n\'est encore inscrit. Chaque joueur s\'inscrit ici avec son prénom et son nom.</div>';return}
   $("plist").innerHTML='<ul class="plist">'+list.map(p=>{
-    const tag=(p.id===myId?'<span class="tag">Moi</span>':"")+(p.pinHash?'<span class="tag lock">Protégé</span>':"");
+    const tag=(p.id===myId?'<span class="tag">Moi</span>':"")+(p.pinHash?'<span class="tag lock">Protégé</span>':"")+(isOff(p)?'<span class="tag off">Désactivé</span>':"");
+    const tog=(p.id===myId||!p.pinHash)?`<button class="mini" data-off="${esc(p.id)}">${isOff(p)?"Activer":"Désactiver"}</button>`:"";
     const prot=p.pinHash&&p.id!==myId;
     const del=isCoach?`<button class="mini ${armedDel===p.id?"warn":""}" data-del="${esc(p.id)}" id="del-${esc(p.id)}">${armedDel===p.id?(prot?"Annuler":"Confirmer ?"):"Retirer"}</button>`:"";
     const pinrow=prot&&armedDel===p.id?`<form class="inline pindel" data-pindel="${esc(p.id)}"><input type="password" inputmode="numeric" maxlength="8" placeholder="Code de ce joueur" aria-label="Code d'accès de ${esc(full(p))}"><button class="btn sm danger" type="submit">Supprimer</button></form>`:"";
-    return `<li><span class="av ${p.num?"numb":""}">${p.num?esc(p.num):esc(initials(p))}</span><span class="nm"><b>${esc(full(p))}${tag}</b>${posText(p)?`<span class="pos">${esc(posText(p))}</span>`:""}${pinrow}</span>${del}</li>`}).join("")+"</ul>";
+    return `<li class="${isOff(p)?"off":""}"><span class="av ${p.num?"numb":""}">${p.num?esc(p.num):esc(initials(p))}</span><span class="nm"><b>${esc(full(p))}${tag}</b>${posText(p)?`<span class="pos">${esc(posText(p))}</span>`:""}${pinrow}</span>${tog}${del}</li>`}).join("")+"</ul>";
 }
 
 /* =====================================================
@@ -1256,7 +1284,7 @@ function evButtons(ev){return `<button class="mini" data-editev="${esc(ev.id)}">
 function delConfirm(ev){if(armedEv!==ev.id)return"";const n=ev.sid?D.events.filter(x=>x.sid===ev.sid&&x.date>=ev.date).length:0;
   return `<div class="confirm"><p>Supprimer ${ev.sid?"quoi ?":"cette séance ?"}</p><div class="btnrow"><button class="btn sm danger" data-delone="${esc(ev.id)}">${ev.sid?"Cette séance seulement":"Oui, supprimer"}</button>${ev.sid&&n>1?`<button class="btn sm danger" data-delseries="${esc(ev.id)}">Toute la série à venir (${n})</button>`:""}</div></div>`}
 function eventHTML(ev){
-  const ps=sortPlayers(D.players);let c={p:0,a:0,m:0,n:0};ps.forEach(p=>{const a=answer(p.id,ev.id);c[a||"n"]++});
+  const ps=sortPlayers(D.players);let c={p:0,a:0,m:0,n:0};ps.forEach(p=>{const a=answer(p.id,ev.id);if(a||!isOff(p))c[a||"n"]++});
   const me=myId&&playerById(myId);
   let h=`<div class="ev"><div class="evtop"><span class="kpill ${ev.kind}">${KINDS[ev.kind]||"Séance"}</span><b class="num">${esc(timeRange(ev))}</b>${ev.sid?`<span class="rep">↻ ${REP_LABEL[ev.rep]||"série"}</span>`:""}</div>`;
   const meta=[ev.place,ev.note].filter(Boolean).map(esc).join(" · ");
@@ -1266,7 +1294,7 @@ function eventHTML(ev){
   else if(dbState==="on")h+=`<p class="hint" style="margin:0">Inscris-toi ou choisis ton nom dans l'onglet Effectif pour répondre.</p>`;
   if(isCoach&&ps.length){
     h+=`<div class="evactions"><button class="mini" data-sheet="${esc(ev.id)}">${openSheet===ev.id?"Fermer la feuille":"Feuille de présence"}</button>${evButtons(ev)}</div>`+delConfirm(ev);
-    if(openSheet===ev.id)h+=`<div class="sheet">`+ps.map(p=>`<div class="sr"><span>${esc(full(p))}</span>${segHTML(p.id,ev.id)}</div>`).join("")+`</div>`;
+    if(openSheet===ev.id)h+=`<div class="sheet">`+ps.map(p=>`<div class="sr${isOff(p)?" off":""}"><span>${esc(full(p))}${isOff(p)?" (désactivé)":""}</span>${segHTML(p.id,ev.id)}</div>`).join("")+`</div>`;
   }else if(isCoach)h+=`<div class="evactions">${evButtons(ev)}</div>`+delConfirm(ev);
   return h+`</div>`}
 
@@ -1286,7 +1314,7 @@ function renderSemaine(){
   for(let i=0;i<7;i++){const s=wkAdd(wkStart,i),d=parseYmd(s),evs=sortedEvents(D.events.filter(e=>e.date===s&&e.kind!=="note"));
     h+=`<div class="wkday${s===t?" today":""}${d.getDay()===0||d.getDay()===6?" we":""}${evs.length?"":" none"}"><div class="wkd"><b>${f(d,{weekday:"short"}).replace(".","")}</b><span class="num">${d.getDate()} ${f(d,{month:"short"})}</span></div><div class="wkevs">`;
     if(!evs.length)h+=`<span class="wknone">Pas de séance</span>`;
-    evs.forEach(ev=>{const by={p:[],a:[],m:[],n:[]};ps.forEach(p=>by[answer(p.id,ev.id)||"n"].push(p));const past=ev.date<t;
+    evs.forEach(ev=>{const by={p:[],a:[],m:[],n:[]};ps.forEach(p=>{const a=answer(p.id,ev.id);if(a||!isOff(p))by[a||"n"].push(p)});const past=ev.date<t;
       const chips=(l,c)=>l.map(p=>`<span class="wkchip ${c}${p.id===myId?" me":""}">${esc(wkName(p))}</span>`).join("");
       h+=`<div class="wkev"><div class="evtop"><span class="kpill ${ev.kind}">${KINDS[ev.kind]||"Séance"}</span><b class="num">${esc(timeRange(ev))}</b>${ev.place?`<span class="wkplace">${esc(ev.place)}</span>`:""}</div>`;
       h+=`<div class="wkwho"><span class="wklbl">${past?"Présents":"Inscrits"} ${by.p.length}</span>${by.p.length?chips(by.p,"p"):`<span class="wkempty">Personne pour l’instant</span>`}</div>`;
