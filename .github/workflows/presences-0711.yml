@@ -1,0 +1,45 @@
+name: Présences du match du 07/11
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  presences:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python3 - <<'PY'
+          import json, re, sys, unicodedata, urllib.request, urllib.parse
+          KEY = re.search(r'apiKey:\s*"([^"]+)"', open("index.html", encoding="utf-8").read()).group(1)
+          B = "https://firestore.googleapis.com/v1/projects/fc-st-leon/databases/(default)/documents/"
+          def lst(col):
+              out, tok = [], ""
+              while True:
+                  r = json.load(urllib.request.urlopen(f"{B}{col}?pageSize=300&key={KEY}" + (f"&pageToken={tok}" if tok else "")))
+                  out += r.get("documents", []); tok = r.get("nextPageToken")
+                  if not tok: return out
+          s = lambda f, k: f.get(k, {}).get("stringValue", "")
+          norm = lambda t: re.sub(r"[^a-z]", "", unicodedata.normalize("NFD", t.lower()))
+          ev = [d["name"].split("/")[-1] for d in lst("fc_events") if s(d.get("fields", {}), "date") == "2026-11-07" and s(d.get("fields", {}), "kind") == "match"]
+          if len(ev) != 1: sys.exit(f"Séance du match du 07/11 introuvable ou en double : {ev}")
+          eid = ev[0]
+          players = {d["name"].split("/")[-1]: (s(d.get("fields", {}), "first") + " " + s(d.get("fields", {}), "last")).strip() for d in lst("fc_players")}
+          WANT = ["Pierre Chailley", "Martin Solier", "Giuseppe Giambri", "Guillaume Masquin", "Armand Charrin", "Philippe Kollen", "Sixte Brulé", "Armand du Bourg", "Maxence du Bourg"]
+          ids = []
+          for w in WANT:
+              hit = [i for i, n in players.items() if norm(n) == norm(w)]
+              if len(hit) != 1: sys.exit(f"Joueur non trouvé : {w}")
+              ids.append((w, hit[0]))
+          rs = {d["name"].split("/")[-1]: d.get("fields", {}).get("a", {}).get("mapValue", {}).get("fields", {}) for d in lst("fc_rsvp")}
+          out = []
+          for w, i in ids:
+              before = rs.get(i, {}).get(eid, {}).get("stringValue", "") or "aucune"
+              # only this session's answer is written; the player's other answers stay as they are
+              url = f"{B}fc_rsvp/{i}?key={KEY}&updateMask.fieldPaths=" + urllib.parse.quote(f"a.`{eid}`")
+              body = {"fields": {"a": {"mapValue": {"fields": {eid: {"stringValue": "p"}}}}}}
+              urllib.request.urlopen(urllib.request.Request(url, data=json.dumps(body).encode(), method="PATCH", headers={"Content-Type": "application/json"})).read()
+              after = json.load(urllib.request.urlopen(f"{B}fc_rsvp/{i}?key={KEY}"))["fields"]["a"]["mapValue"]["fields"]
+              out.append(f"{w}: {before} → {after[eid]['stringValue']} ({len(after)} réponses gardées)")
+          print("::notice::Séance " + eid + " | " + " ; ".join(out))
+          PY
