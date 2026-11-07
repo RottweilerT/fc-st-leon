@@ -1785,7 +1785,10 @@ function renderStats(ms){
 // Vote à points : chaque joueur du match classe 3 coéquipiers (3, 2, 1 point). Seul le gagnant est affiché.
 const VOTE_MS=7*24*3600*1000,PTS=[3,2,1],RANKS=["1er","2e","3e"];
 function voteEnd(m){const t=m.at?Date.parse(m.at):(m.date?parseYmd(m.date).getTime()+20*3600*1000:0);return t+VOTE_MS}
-function voteOpen(m){return Date.now()<voteEnd(m)}
+// voters = players of the match whose profile still exists; the vote ends after 7 days, or as soon as they have all voted
+function voters(m){return (m.rows||[]).map(r=>r.id).filter(id=>playerById(id))}
+function allVoted(m){const v=voters(m);return v.length>0&&v.every(id=>m.votes&&m.votes[id])}
+function voteOpen(m){return Date.now()<voteEnd(m)&&!allVoted(m)}
 function ballot(v){return Array.isArray(v)?v:v?[v]:[]}
 function tally(m){const c={},f={};Object.values(m.votes||{}).forEach(v=>ballot(v).slice(0,3).forEach((id,i)=>{c[id]=(c[id]||0)+PTS[i];if(!i)f[id]=(f[id]||0)+1}));return{c,f}}
 // plus de points ; à égalité, plus de votes en 1re place ; sinon co-hommes du match
@@ -1816,7 +1819,7 @@ function closeVotes(){D.matches.forEach(m=>{if(voteOpen(m)||(m.motm&&m.motm.clos
 function voteBox(m){const nVotes=Object.keys(m.votes||{}).length;
   if(!voteOpen(m)){const t=motmText(m);return `<div class="votebox"><b>Homme du match :</b> ${t?esc(t):"pas de vote"}</div>`}
   const mine=myId&&m.votes&&m.votes[myId];
-  let h=`<div class="votebox"><div class="vb-top"><b>Vote pour l'homme du match</b><span class="hint num">${nVotes} vote${nVotes>1?"s":""} · ${daysLeft(m)}</span></div>`;
+  let h=`<div class="votebox"><div class="vb-top"><b>Vote pour l'homme du match</b><span class="hint num">${nVotes} / ${voters(m).length} votes · ${daysLeft(m)}</span></div><p class="hint" style="margin:2px 0 0">Le vote se termine dès que tous les joueurs du match ont voté, sinon au bout de 7 jours.</p>`;
   if(!myId)return h+`<p class="hint" style="margin:6px 0 0">Inscris-toi ou choisis ton nom dans Effectif pour voter.</p></div>`;
   if(!played(m))return h+`<p class="hint" style="margin:6px 0 0">Seuls les joueurs qui ont joué ce match peuvent voter.</p></div>`;
   if(mine)return h+`<p style="margin:6px 0 0">Ton vote : ${ballot(mine).map((id,i)=>`${RANKS[i]} <b>${esc(shortName(rowName(m,id)))}</b>`).join(" · ")}</p><p class="hint" style="margin:4px 0 0">Seul le gagnant sera annoncé à la fin du vote.</p></div>`;
