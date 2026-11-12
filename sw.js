@@ -1,7 +1,7 @@
 // Mode hors ligne : la page et ses ressources sont gardées sur l'appareil.
 // La page est redemandée au réseau d'abord (pour avoir la dernière version) ; si le réseau ne répond pas
 // en 2,5 s (4G faible) ou s'il n'y a pas de connexion, la copie gardée sur l'appareil s'ouvre tout de suite. Les données Firebase ne passent pas par ici.
-const CACHE = 'fcsl-v7';
+const CACHE = 'fcsl-v8';
 const CORE = ['./', './index.html', './manifest.webmanifest', './icon-192-v5.png', './icon-512-v5.png', './crest-96-v5.png', './crest-512-v5.png', './icon-round-192-v5.png', './icon-round-512-v5.png', './icon-maskable-512-v5.png', './crest-mono-256-v5.png', './favicon-32-v5.png'];
 const EXTERNAL = ['fonts.googleapis.com', 'fonts.gstatic.com'];
 

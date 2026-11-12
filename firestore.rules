@@ -12,5 +12,21 @@ service cloud.firestore {
     match /fc_rsvp/{id} { allow read, write: if true; }
     match /fc_compos/{id} { allow read, write: if true; }
     match /fc_matches/{id} { allow read, write: if true; }
+    // Abonnements aux notifications : une fiche par téléphone (identifiant aléatoire gardé sur le téléphone).
+    // Personne ne peut les lire depuis le site : seul le programme d'envoi (compte de service) y accède.
+    match /fc_push/{id} {
+      allow read: if false;
+      allow delete: if true;
+      allow create, update: if id.size() >= 20 && id.size() <= 64
+        && request.resource.data.keys().hasOnly(['token', 'who', 'cats', 'on', 'at', 'maj'])
+        && request.resource.data.token is string && request.resource.data.token.size() >= 20 && request.resource.data.token.size() <= 4096
+        && request.resource.data.who is string && request.resource.data.who.size() <= 64
+        && request.resource.data.cats is list && request.resource.data.cats.size() <= 8
+        && request.resource.data.on is bool
+        && request.resource.data.at is string && request.resource.data.at.size() <= 40
+        && request.resource.data.maj is string && request.resource.data.maj.size() <= 40;
+    }
+    // Historique des envois : écrit et lu seulement par le programme d'envoi.
+    match /fc_push_log/{id} { allow read, write: if false; }
   }
 }

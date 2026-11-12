@@ -435,6 +435,7 @@ ol.steps{margin:0 0 14px;padding-left:20px} ol.steps li{margin-bottom:4px}
 .reg input:focus-visible,.reg select:focus-visible,.reg button:focus-visible{outline:2px solid var(--reg-accent);outline-offset:1px}
 .reg .reg-check{display:flex;align-items:center;gap:8px;font-size:.88rem;font-weight:500;color:var(--reg-ink);margin:0}
 .reg .reg-check input{width:18px;height:18px;margin:0;accent-color:var(--reg-accent)}
+.tel-cats{border:0;margin:2px 0 4px;padding:0;display:grid;gap:8px}.tel-cats legend{padding:0;margin-bottom:6px;font-size:.82rem;font-weight:600;color:var(--reg-muted)}
 .reg-note{margin:0;font-size:.82rem;color:var(--reg-muted);line-height:1.45}
 .reg-err{margin:0;padding:8px 10px;border-radius:8px;background:var(--reg-danger-soft);color:var(--reg-danger);font-size:.88rem}
 .reg-ok{margin:0;padding:8px 10px;border-radius:8px;background:var(--reg-soft);color:var(--reg-ink);font-size:.88rem}
@@ -568,8 +569,11 @@ addEventListener("load",hide);setTimeout(hide,2500)})();</script>
         <p class="reg-kicker">Sur ton téléphone</p>
         <p class="reg-line" id="telInstallTxt"></p>
         <div class="reg-actions" id="telInstallRow" hidden><button class="reg-btn ghost" type="button" id="telInstall">Installer l'appli</button></div>
+        <p class="reg-kicker" style="margin-top:6px"><span aria-hidden="true">🔔</span> Notifications <span class="tag" id="telState"></span></p>
         <p class="reg-line" id="telPushTxt"></p>
-        <div class="reg-actions"><button class="reg-btn" type="button" id="telOn" hidden>Activer les notifications</button><button class="reg-btn ghost" type="button" id="telOff" hidden>Couper les notifications</button></div>
+        <fieldset class="tel-cats" id="telCats" hidden><legend>Je veux être prévenu pour :</legend></fieldset>
+        <div class="reg-actions"><button class="reg-btn" type="button" id="telOn" hidden>Activer les notifications</button><button class="reg-btn ghost" type="button" id="telOff" hidden>Me désabonner</button></div>
+        <p class="reg-note" id="telPrivacy" hidden>Ce téléphone reçoit un identifiant de notification, rangé avec tes choix dans une partie privée de la base de l'équipe. Il ne sert qu'à t'envoyer ces alertes et il est effacé dès que tu te désabonnes.</p>
         <p class="reg-note" id="telMsg" role="status" hidden></p>
       </div>
       <!-- Déjà inscrit -->
@@ -1088,12 +1092,16 @@ $("pin-ask").onsubmit=async e=>{e.preventDefault();const p=playerById(pendingPic
   if(await checkPin(p,$("pin-input").value.trim()))pickAs(p.id);else{$("pin-msg").textContent=lockMsg();$("pin-input").value=""}};
 function clearMeForm(){$("me-form").reset();fillPosSelects(["","",""]);meErr("")}
 $("me-forget").onclick=()=>{myId=null;lss("fcsl-me",null);editingMe=false;armedDel=null;clearMeForm();render()};
-const PUSH={vapid:'BFByFBcJaAiz1KGI9SeF697tlPiZ787NDpZd2u_5pAz6O4cdvKumnUySt67fRgon13qh4cyv6BttSMeUkZ0TAcM',path:id=>'fc_players/'+id,me:()=>myId&&playerById(myId)?myId:'',mot:'une séance',fem:true};
-/* ----- Sur ton téléphone : installation de l'appli et notifications (même code dans le foot et la boxe) -----
-   Le jeton de notification de chaque téléphone est rangé dans la fiche du membre (champ « push »).
-   Les envois sont faits par la GitHub Action « Notifications » (séance modifiée ou annulée, rappel du samedi 16 h). */
+const PUSH={vapid:'BFByFBcJaAiz1KGI9SeF697tlPiZ787NDpZd2u_5pAz6O4cdvKumnUySt67fRgon13qh4cyv6BttSMeUkZ0TAcM',path:id=>'fc_players/'+id,me:()=>myId&&playerById(myId)?myId:'',
+  // catégories proposées : [clé, libellé, réservée aux inscrits ?]
+  cats:[['cal','Séance modifiée ou annulée'],['nouv','Nouvelle séance au calendrier'],['res','Résultat d’un match et vote'],['rappel','Rappel du samedi à 16 h pour mes présences',true],['info','Messages de l’équipe']]};
+/* ----- Sur ton téléphone : installation de l'appli et notifications -----
+   Abonnement = une fiche par téléphone dans la collection privée fc_push (jeton FCM, membre, catégories choisies),
+   écrite mais jamais lisible depuis le site. Tant que la règle Firebase de fc_push n'est pas publiée, l'appli garde
+   l'ancien rangement (champ « push » de la fiche du membre) puis bascule toute seule.
+   Les envois sont faits par la GitHub Action « Notifications » (voir README). */
 const Tel=(()=>{
-  const K='push-token',KW='push-who';
+  const K='push-token',KW='push-who',KI='push-id',KC='push-cats',KS='push-store',KA='push-at';
   const get=k=>{try{return localStorage.getItem(k)||''}catch(e){return ''}};
   const put=(k,v)=>{try{v?localStorage.setItem(k,v):localStorage.removeItem(k)}catch(e){}};
   const standalone=()=>matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
@@ -1109,56 +1117,83 @@ const Tel=(()=>{
   const FV=()=>firebase.firestore.FieldValue;
   const add=(id,t)=>db.doc(PUSH.path(id)).set({push:FV().arrayUnion(t)},{merge:true});
   const remove=(id,t)=>db.doc(PUSH.path(id)).set({push:FV().arrayRemove(t)},{merge:true});
-  const active=()=>!!(get(K)&&get(KW)&&'Notification' in window&&Notification.permission==='granted');
+  const allCats=()=>PUSH.cats.map(c=>c[0]);
+  function cats(){const v=get(KC);if(!v)return allCats();try{const a=JSON.parse(v);return allCats().filter(k=>a.includes(k))}catch(e){return allCats()}}
+  function instId(){let i=get(KI);if(!i){const a=new Uint8Array(18);crypto.getRandomValues(a);i='i-'+[...a].map(x=>x.toString(16).padStart(2,'0')).join('');put(KI,i)}return i}
+  const priv=()=>get(KS)==='prive';
+  /* fiche privée de ce téléphone (écriture seule : les règles interdisent toute lecture) */
+  async function savePrivate(t,who){const now=new Date().toISOString();if(!get(KA))put(KA,now);
+    await db.doc('fc_push/'+instId()).set({token:t,who:who||'',cats:cats(),on:true,at:get(KA),maj:now})}
+  const active=()=>!!(get(K)&&'Notification' in window&&Notification.permission==='granted');
   async function on(){
-    const id=PUSH.me();if(!id||busy)return;busy=true;render();msg('');
+    if(busy)return;const id=PUSH.me();busy=true;render();msg('');
     try{
       const p=await Notification.requestPermission();
       if(p!=='granted'){msg(p==='denied'?'Notifications refusées. Pour changer d’avis, autorise-les dans les réglages du navigateur pour ce site.':'Notifications non activées.');return}
       const t=await token();if(!t)throw new Error('jeton vide');
-      await add(id,t);put(K,t);put(KW,id);synced=id+'|'+t;msg('C’est activé sur ce téléphone.');
+      try{await savePrivate(t,id);put(KS,'prive')}
+      catch(e){if(!id)throw e;await add(id,t);put(KS,'fiche')}   // règle fc_push pas encore publiée : ancien rangement
+      put(K,t);put(KW,id||'-');synced=id+'|'+t;msg('C’est activé sur cet appareil.');
     }catch(e){console.error(e);msg('Impossible d’activer les notifications pour l’instant. Vérifie ta connexion et réessaie.')}
     finally{busy=false;render()}
   }
   async function off(){
     if(busy)return;busy=true;render();
     const t=get(K),who=get(KW);
-    try{if(t&&who)await remove(who,t).catch(()=>{});await messaging().deleteToken().catch(()=>{})}
-    finally{put(K,null);put(KW,null);synced='';busy=false;msg('Notifications coupées sur ce téléphone.');render()}
+    try{if(priv())await db.doc('fc_push/'+instId()).delete().catch(()=>{});
+      if(t&&who&&who!=='-')await remove(who,t).catch(()=>{});await messaging().deleteToken().catch(()=>{})}
+    finally{[K,KW,KS,KA].forEach(k=>put(k,null));synced='';busy=false;msg('Tu es désabonné sur cet appareil.');render()}
   }
-  /* Garde le jeton rattaché à la bonne personne (changement de profil, jeton renouvelé). */
+  async function setCat(k,want){const c=cats().filter(x=>x!==k);if(want)c.push(k);put(KC,JSON.stringify(c));render();
+    if(!active()||!priv())return;
+    try{await savePrivate(get(K),PUSH.me());msg('Choix enregistré.')}catch(e){console.warn(e);msg('Choix non enregistré : vérifie ta connexion.')}}
+  /* Garde l'abonnement rattaché à la bonne personne (changement de profil, jeton renouvelé)
+     et fait passer les anciens abonnements dans la partie privée dès qu'elle est ouverte. */
   async function sync(){
-    if(!active()||!supported()||busy)return;
-    const id=PUSH.me()||'',who=get(KW),t=get(K);
+    if(!active()||!supported()||busy||!db)return;
+    const id=PUSH.me()||'',who=get(KW)==='-'?'':get(KW),t=get(K);
     if(synced===id+'|'+t)return;synced=id+'|'+t;
     try{
-      if(who&&who!==id){await remove(who,t).catch(()=>{});put(KW,id||null)}
-      if(!id)return;
-      const nt=await token();
-      if(nt&&nt!==t){await remove(id,t).catch(()=>{});put(K,nt)}
-      await add(id,nt||t);put(KW,id);synced=id+'|'+(nt||t);
+      const nt=await token()||t;
+      try{await savePrivate(nt,id);
+        if(!priv()||nt!==t||who!==id){if(who)await remove(who,t).catch(()=>{});put(KS,'prive')}
+      }catch(e){   // partie privée fermée : ancien rangement, rattaché au bon profil
+        if(priv())throw e;
+        if(who&&who!==id)await remove(who,t).catch(()=>{});
+        if(id){if(nt!==t)await remove(id,t).catch(()=>{});await add(id,nt)}}
+      put(K,nt);put(KW,id||'-');synced=id+'|'+nt;render();
     }catch(e){console.warn('notifications',e)}
   }
   function render(){
     const card=el('telCard');if(!card||card.hidden)return;
     const it=el('telInstallTxt'),ir=el('telInstallRow');ir.hidden=true;
-    if(standalone())it.textContent='✓ L’appli est installée sur ce téléphone.';
+    if(standalone())it.textContent='✓ L’appli est installée sur cet appareil.';
     else if(installEvt){it.textContent='Ajoute l’appli à ton écran d’accueil pour l’ouvrir en un geste, comme une vraie appli.';ir.hidden=false}
-    else if(ios())it.textContent='Sur iPhone : dans Safari, touche Partager (le carré avec une flèche), puis «\u00A0Sur l’écran d’accueil\u00A0». Ouvre ensuite l’appli depuis son icône.';
-    else it.textContent='Pour l’installer : menu ⋮ du navigateur, puis «\u00A0Installer l’appli\u00A0» ou «\u00A0Ajouter à l’écran d’accueil\u00A0».';
-    const pt=el('telPushTxt'),bOn=el('telOn'),bOff=el('telOff');bOn.hidden=bOff.hidden=true;bOn.disabled=bOff.disabled=busy;
-    const what=`une alerte si ${PUSH.mot} est modifié${PUSH.fem?'e':''} ou annulé${PUSH.fem?'e':''}, et un rappel le samedi à 16 h pour indiquer tes présences`;
-    if(!PUSH.vapid)pt.textContent='Les notifications arrivent bientôt.';
-    else if(ios()&&!standalone())pt.textContent='Notifications : installe d’abord l’appli (voir ci-dessus), puis ouvre-la depuis son icône pour les activer.';
-    else if(!supported())pt.textContent='Ce navigateur ne gère pas les notifications. Essaie avec Chrome (Android) ou l’appli installée (iPhone).';
-    else if(Notification.permission==='denied')pt.textContent='Les notifications sont bloquées pour ce site : autorise-les dans les réglages du navigateur, puis reviens ici.';
-    else if(active()&&get(KW)===PUSH.me()){pt.textContent='🔔 Notifications activées : '+what+'.';bOff.hidden=false}
-    else{pt.textContent='Reçois '+what+'.';bOn.hidden=false}
+    else if(ios())it.textContent='Sur iPhone : dans Safari, touche Partager (le carré avec une flèche), puis « Sur l’écran d’accueil ». Ouvre ensuite l’appli depuis son icône.';
+    else it.textContent='Pour l’installer : menu ⋮ du navigateur, puis « Installer l’appli » ou « Ajouter à l’écran d’accueil ».';
+    const pt=el('telPushTxt'),bOn=el('telOn'),bOff=el('telOff'),st=el('telState'),fc=el('telCats');bOn.hidden=bOff.hidden=fc.hidden=true;bOn.disabled=bOff.disabled=busy;el('telPrivacy').hidden=true;
+    const state=t=>{st.textContent=t;st.hidden=!t};
+    if(!PUSH.vapid){state('');pt.textContent='Les notifications arrivent bientôt.'}
+    else if(ios()&&!standalone()){state('À installer d’abord');pt.textContent='Sur iPhone et iPad, installe d’abord l’appli (voir ci-dessus), puis ouvre-la depuis son icône pour activer les notifications.'}
+    else if(!supported()){state('Non compatible');pt.textContent='Ce navigateur ne gère pas les notifications. Essaie avec Chrome ou Edge (Android, ordinateur), ou avec l’appli installée (iPhone).'}
+    else if(Notification.permission==='denied'){state('Refusées');pt.textContent='Les notifications sont bloquées pour ce site : autorise-les dans les réglages du navigateur, puis reviens ici.'}
+    else if(active()){state('Activées');bOff.hidden=false;el('telPrivacy').hidden=false;
+      if(priv()){pt.textContent='Tu reçois les alertes cochées, même quand l’appli est fermée.';showCats(fc)}
+      else pt.textContent='Tu reçois une alerte si une séance est modifiée ou annulée, et le rappel du samedi à 16 h.'}
+    else{state('Désactivées');pt.textContent='Reçois les alertes de l’équipe sur cet appareil, même quand l’appli est fermée. Rien n’est envoyé sans ton accord.';bOn.hidden=false;el('telPrivacy').hidden=false}
   }
+  function showCats(fc){fc.hidden=false;const mine=cats(),me=!!PUSH.me(),sig=mine.join()+'|'+me;if(fc.dataset.sig===sig)return;fc.dataset.sig=sig;
+    fc.querySelectorAll('label').forEach(l=>l.remove());
+    PUSH.cats.forEach(([k,label,needMe])=>{if(needMe&&!me)return;const l=document.createElement('label');l.className='reg-check';
+      const i=document.createElement('input');i.type='checkbox';i.checked=mine.includes(k);i.addEventListener('change',()=>setCat(k,i.checked));
+      l.appendChild(i);l.appendChild(document.createTextNode(' '+label));fc.appendChild(l)})}
   el('telInstall').addEventListener('click',async()=>{if(!installEvt)return;installEvt.prompt();try{await installEvt.userChoice}catch(e){}installEvt=null;render()});
   el('telOn').addEventListener('click',on);el('telOff').addEventListener('click',off);
   return {render,sync};
 })();
+/* une notification ouvre l'appli sur le bon onglet (lien #calendrier, #resultats…) */
+function openHash(){const t=(location.hash||'').slice(1);if(!TABS.includes(t))return;history.replaceState(history.state,'',location.pathname+location.search);goTab(t)}
+addEventListener('hashchange',openHash);
 $("add-form").onsubmit=async e=>{e.preventDefault();if(!db||!isCoach)return;
   const first=$("add-first").value.trim(),last=$("add-last").value.trim();if(!first||!last)return;
   try{await db.collection("fc_players").doc("c-"+rid()).set({first,last,self:false,at:new Date().toISOString()});$("add-first").value="";$("add-last").value="";toast(first+" "+last+" ajouté ✓")}
@@ -1207,7 +1242,7 @@ function renderEffectif(){
     $("me-submit").textContent=me?"Enregistrer":"Je m'inscris";$("me-cancel").hidden=!me;
     $("me-pin-label").textContent=me&&me.pinHash?"Nouveau code":"Code d'accès";$("me-pin").placeholder=me&&me.pinHash?"Laisse vide pour garder":"Facultatif";$("me-pinoff-row").hidden=!(me&&me.pinHash);
     $("me-pin-hint").textContent=me&&me.pinHash?"Tu as déjà un code : laisse vide pour le garder, ou tape un nouveau code (4 à 8 chiffres).":"4 à 8 chiffres. Avec un code, personne d'autre ne peut ouvrir ta fiche sur son téléphone ni la supprimer.";}
-  $("telCard").hidden=!(me&&!editingMe);Tel.render();Tel.sync();
+  $("telCard").hidden=!!editingMe;Tel.render();Tel.sync();
   $("coach-add").hidden=!(dbState==="on"&&isCoach);
   const list=sortPlayers(D.players);
   {const off=list.filter(isOff).length;$("pcount").textContent=list.length?list.length+" joueur"+(list.length>1?"s":"")+(off?" · "+off+" désactivé"+(off>1?"s":""):""):"";}
@@ -2118,7 +2153,7 @@ function listen(path,fn){db.collection(path).onSnapshot(s=>{fn(s.docs.map(d=>Obj
   listen("fc_rsvp",a=>{const o={};a.forEach(r=>o[r.id]={a:r.a||{}});D.rsvp=o});
   listen("fc_compos",a=>D.compos=a.sort((x,y)=>(y.at||"").localeCompare(x.at||"")));
   listen("fc_matches",a=>D.matches=a);
-  render();
+  render();openHash();
 })();
 function wake(){try{navigator.wakeLock&&navigator.wakeLock.request("screen").catch(()=>{})}catch(e){}}
 wake();document.addEventListener("visibilitychange",()=>{if(!document.hidden){wake();render()}});

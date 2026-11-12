@@ -4,7 +4,7 @@ name: Tests du moteur de stats
 # donnent toujours les résultats attendus (scénarios A à J).
 on:
   push:
-    paths: ["index.html", "tests/**"]
+    paths: ["index.html", "tests/**", ".github/notifications.py", "firestore.rules"]
   workflow_dispatch:
 
 permissions:
@@ -17,3 +17,5 @@ jobs:
       - uses: actions/checkout@v4
       - name: Lancer les tests
         run: node tests/moteur.test.js
+      - name: Tests des notifications (faux serveur, aucun envoi réel)
+        run: python3 tests/notifications.test.py

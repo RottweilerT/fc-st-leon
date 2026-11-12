@@ -1,8 +1,11 @@
 name: Notifications
 
 # Envoie les notifications de l'appli aux téléphones qui les ont activées (Firebase Cloud Messaging) :
-#  - toutes les 15 minutes : une séance à venir modifiée ou annulée ;
-#  - le samedi à 16 h (heure de Paris) : rappel d'indiquer ses présences pour la semaine.
+#  - toutes les 15 minutes : séance modifiée ou annulée, nouvelle séance, résultat de match enregistré ;
+#  - le samedi à 16 h (heure de Paris) : rappel d'indiquer ses présences pour la semaine ;
+#  - à la main (bouton « Run workflow », mode « message ») : un message rédigé par l'administrateur.
+# Seules les personnes qui ont le droit d'écrire dans ce dépôt GitHub peuvent lancer un envoi à la main :
+# le contrôle est fait par GitHub, pas par l'appli.
 # Le programme est dans .github/notifications.py. Le secret FCM_COMPTE contient le compte de service Firebase.
 on:
   schedule:
@@ -12,11 +15,36 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: "test = notification de test à tous ; rappel = rappel du samedi tout de suite ; changements = vérifier le calendrier"
+        description: "message = ton message ; test = notification de test à tous ; rappel = rappel du samedi tout de suite ; changements = vérifier le calendrier"
         required: true
-        default: "test"
+        default: "message"
         type: choice
-        options: [test, rappel, changements]
+        options: [message, test, rappel, changements]
+      titre:
+        description: "Message : titre (60 caractères au plus)"
+        required: false
+        default: ""
+      texte:
+        description: "Message : texte (240 caractères au plus)"
+        required: false
+        default: ""
+      categorie:
+        description: "Message : envoyé aux abonnés de… info = message de l'équipe, cal = calendrier, res = résultats"
+        required: false
+        default: "info"
+        type: choice
+        options: [info, cal, nouv, res]
+      lien:
+        description: "Message : onglet ouvert au toucher (vide = accueil)"
+        required: false
+        default: ""
+        type: choice
+        options: ["", calendrier, resultats, stats, effectif]
+      apercu:
+        description: "Message : aperçu seulement (affiche le message et le nombre de destinataires, n'envoie rien)"
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -58,6 +86,11 @@ jobs:
           MODE: ${{ steps.mode.outputs.mode }}
           FORCER: ${{ steps.mode.outputs.forcer }}
           FCM_COMPTE: ${{ secrets.FCM_COMPTE }}
+          TITRE: ${{ github.event.inputs.titre }}
+          TEXTE: ${{ github.event.inputs.texte }}
+          CATEGORIE: ${{ github.event.inputs.categorie }}
+          LIEN: ${{ github.event.inputs.lien }}
+          APERCU: ${{ github.event.inputs.apercu }}
         run: |
           pip install -q google-auth requests
           python3 .github/notifications.py
