@@ -1,12 +1,16 @@
 // Mode hors ligne : la page et ses ressources sont gardées sur l'appareil.
 // La page est redemandée au réseau d'abord (pour avoir la dernière version) ; si le réseau ne répond pas
 // en 2,5 s (4G faible) ou s'il n'y a pas de connexion, la copie gardée sur l'appareil s'ouvre tout de suite. Les données Firebase ne passent pas par ici.
-const CACHE = 'fcsl-v8';
+const CACHE = 'fcsl-v9';
 const CORE = ['./', './index.html', './manifest.webmanifest', './icon-192-v5.png', './icon-512-v5.png', './crest-96-v5.png', './crest-512-v5.png', './icon-round-192-v5.png', './icon-round-512-v5.png', './icon-maskable-512-v5.png', './crest-mono-256-v5.png', './favicon-32-v5.png'];
+// Moteur Firebase : mis en cache dès l'installation, pour que l'appli démarre sans réseau même juste après une mise à jour.
+const SDK = ['https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js', 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js', 'https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js'];
 const EXTERNAL = ['fonts.googleapis.com', 'fonts.gstatic.com'];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(CORE.map(u => new Request(u, { cache: 'reload' })))).then(() => self.skipWaiting()));
+  // Le moteur Firebase est rangé à part : s'il ne se télécharge pas, l'installation continue quand même.
+  const sdk = c => Promise.all(SDK.map(u => fetch(u, { mode: 'cors', cache: 'reload' }).then(r => r.ok && c.put(u, r)).catch(() => {})));
+  e.waitUntil(caches.open(CACHE).then(c => Promise.all([c.addAll(CORE.map(u => new Request(u, { cache: 'reload' }))), sdk(c)])).then(() => self.skipWaiting()));
 });
 self.addEventListener('activate', e => {
   e.waitUntil(caches.keys()
